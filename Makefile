@@ -1,18 +1,18 @@
 CC = g++
-SDLDIR = /home/hafron/dev/steppe-ride/src/sdl2
+SDLDIR = /home/hafron/dev/steppe-escape/src/sdl2
 LIBDIR = ${SDLDIR}/lib
 INCDIR = ${SDLDIR}/include/SDL2
 
 CFLAGS = -std=c++0x -pedantic -Wall -ggdb3 -I${INCDIR}
 LDFLAGS = -L${LIBDIR} -Wl,-rpath -Wl,${LIBDIR} -lSDL2
 
-SRC = sr.cpp
+SRC = se.cpp
 OBJ = ${SRC:.cpp=.o}
 
-all: options sr
+all: options se
 
 options:
-	@echo sr build options:
+	@echo se build options:
 	@echo "CFLAGS   = ${CFLAGS}"
 	@echo "LDFLAGS  = ${LDFLAGS}"
 	@echo "CC       = ${CC}"
@@ -21,12 +21,12 @@ options:
 	@echo CC $<
 	@${CC} -c ${CFLAGS} $<
 
-sr: ${OBJ}
+se: ${OBJ}
 	@echo CC -o $@
 	@${CC} -o $@ ${OBJ} ${LDFLAGS}
 
 clean:
 	@echo cleaning
-	@rm -f sr ${OBJ} 
+	@rm -f se ${OBJ} 
 
 .PHONY: all options clean 
