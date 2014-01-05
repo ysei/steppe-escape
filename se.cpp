@@ -10,16 +10,17 @@ const int MAX_PATH_LEN = 100;
 const string IMAGE_PATH = "images";
 
 //Screen dimension constants 
-const int SCREEN_WIDTH = 640;
-const int SCREEN_HEIGHT = 480;
+const int SCREEN_WIDTH = 960;
+const int SCREEN_HEIGHT = 540;
 
 enum Surfaces {
 	SUR_START,
 	SUR_STEPPE,
+	SUR_PLANE,
 	SUR_TOTAL,
 };
 
-const string Images[] = {"start.bmp", "steppe.bmp"};
+const string Images[] = {"start.bmp", "steppe.bmp", "kws1.bmp"};
 
 void
 error(string msg, ...) {
@@ -30,15 +31,21 @@ error(string msg, ...) {
 }
 
 SDL_Surface *
-load_media(string src) {
-	SDL_Surface *img;
+load_media(string src, SDL_Surface *screen) {
+	SDL_Surface *img, *opt_img;
 	string path = "";
 	path = IMAGE_PATH + "/" + src;
 	img = SDL_LoadBMP(path.c_str());
 	if (img == NULL) {
 		error("Unable to load image %s! SDL Error: %s\n", path.c_str(), SDL_GetError());
 	}
-	return img;
+	opt_img = SDL_ConvertSurface(img, screen->format, 0);
+	if (opt_img == NULL) {
+		error("Unable to optimize image %s! SDL Error: %s\n", path.c_str(), SDL_GetError());
+	}
+	//Get rid of unoptimalized surface
+	SDL_FreeSurface(img);
+	return opt_img;
 }
 
 void
@@ -48,9 +55,9 @@ free_media(SDL_Surface *img) {
 
 
 void
-load_media_all(SDL_Surface *surfaces[]) {
+load_media_all(SDL_Surface *surfaces[], SDL_Surface *screen) {
 	for (int i = 0; i < SUR_TOTAL; i++) {
-		surfaces[i] = load_media(Images[i]);
+		surfaces[i] = load_media(Images[i], screen);
 	}
 }
 
@@ -76,10 +83,15 @@ main() {
 	} 
 
 	screen = SDL_GetWindowSurface(window);
+	load_media_all(surfaces, screen);
 
-	load_media_all(surfaces);
+	SDL_Rect screen_rect;
+	screen_rect.x = 0;
+	screen_rect.y = 0;
+	screen_rect.w = SCREEN_WIDTH;
+	screen_rect.h = SCREEN_HEIGHT;
 
-	SDL_BlitSurface(surfaces[SUR_START], NULL, screen, NULL);
+	SDL_BlitScaled(surfaces[SUR_START], NULL, screen, &screen_rect);
 
 	SDL_UpdateWindowSurface(window);
 
@@ -95,7 +107,7 @@ main() {
 			} else if (e.type == SDL_KEYDOWN) {
 				switch (e.key.keysym.sym) {
 					case SDLK_SPACE:
-						cur_surface = surfaces[SUR_STEPPE];
+						cur_surface = surfaces[SUR_PLANE];
 					break;
 				}
 			}
