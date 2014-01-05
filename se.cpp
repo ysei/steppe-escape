@@ -4,6 +4,7 @@
 #include <cstdlib>
 #include <SDL.h>
 
+#include "map.xpm"
 //Game Scale: 1px = 0,21559m
 //River Length: 525km = 525000m = 2435177px
 //KWS1: Rozpietosc: 9,04m Dlugosc: 7,33m(34px) Wysokosc: 2,7m
@@ -94,13 +95,52 @@ get_ticks(int start_ticks) {
 }
 
 void
+gen_map() {
+}
+
+void
 draw_map(SDL_Surface *screen) {
 	SDL_FillRect( screen, &screen->clip_rect, SDL_MapRGB( screen->format, 0xFF, 0xFF, 0xFF ) );
 }
 
+typedef struct Plane Plane;
+struct Plane {
+	int x, y, x_vel, y_vel;
+	SDL_Surface *sur;
+};
+
 void
-show_plane(SDL_Surface *plane, SDL_Surface *screen) {
-	applay_surface((SCREEN_WIDTH/2) - (plane->w/2), SCREEN_HEIGHT-plane->h, plane, screen);
+show_plane(Plane *plane, SDL_Surface *screen) {
+	applay_surface(plane->x, plane->y, plane->sur, screen);
+}
+
+void
+handle_plane_input(Plane *plane, SDL_Event *e) {
+	if (e->type == SDL_KEYDOWN) {
+		switch(e->key.keysym.sym) {
+			case SDLK_LEFT:
+				plane->x_vel -= plane->sur->w/2;
+				break;
+			case SDLK_RIGHT:
+				plane->x_vel += plane->sur->w/2;
+				break;
+		}
+	} else if (e->type == SDL_KEYUP) {
+		switch(e->key.keysym.sym) {
+			case SDLK_LEFT:
+				plane->x_vel += plane->sur->w/2;
+				break;
+			case SDLK_RIGHT:
+				plane->x_vel -= plane->sur->w/2;
+				break;
+		}
+	}
+}
+
+void
+move_plane(Plane *plane) {
+	plane->x += plane->x_vel;
+	plane->y += plane->y_vel;
 }
 
 int
@@ -143,7 +183,7 @@ main() {
 			} else if (e.type == SDL_KEYDOWN) {
 				switch (e.key.keysym.sym) {
 					case SDLK_SPACE:
-						draw_map(screen);
+						gen_map();
 						quit = true;
 					break;
 				}
@@ -157,14 +197,24 @@ main() {
 
 	int start_ticks;
 
+	Plane *plane;
+	plane = new Plane;
+
+   	plane->sur = surfaces[SUR_PLANE];
+	plane->x = (SCREEN_WIDTH/2) - (plane->sur->w/2);
+	plane->y = SCREEN_HEIGHT-plane->sur->h;
+	plane->x_vel = 0;
+	plane->y_vel = 0;
+
 	while (quit == false) {
 		//Start teh frame timer
 		start_ticks = SDL_GetTicks();
 
-		show_plane(surfaces[SUR_PLANE], screen);
-
 		//Handle events on queue
 		while (SDL_PollEvent(&e) != 0) {
+
+			handle_plane_input(plane, &e);
+
 			//User requests quit
 			if (e.type == SDL_QUIT) {
 				quit = true;
@@ -173,6 +223,11 @@ main() {
 				}
 			}
 		}
+		move_plane(plane);
+
+		draw_map(screen);
+		show_plane(plane, screen);
+
 		SDL_UpdateWindowSurface(window);
 		frame++;
 
