@@ -4,6 +4,9 @@
 #include <cstdlib>
 #include <SDL.h>
 
+//Game Scale: 1px = 0,21559m
+//River Length: 525km = 525000m = 2435177px
+//KWS1: Rozpietosc: 9,04m Dlugosc: 7,33m(34px) Wysokosc: 2,7m
 using namespace std;
 
 const int MAX_PATH_LEN = 100;
@@ -12,6 +15,8 @@ const string IMAGE_PATH = "images";
 //Screen dimension constants 
 const int SCREEN_WIDTH = 960;
 const int SCREEN_HEIGHT = 540;
+
+const int FRAMES_PER_SECOND = 20;
 
 enum Surfaces {
 	SUR_START,
@@ -45,7 +50,22 @@ load_media(string src, SDL_Surface *screen) {
 	}
 	//Get rid of unoptimalized surface
 	SDL_FreeSurface(img);
+	Uint32 color_key = SDL_MapRGB(opt_img->format, 0, 0xFF, 0xFF);
+	SDL_SetColorKey(opt_img, SDL_TRUE, color_key);
 	return opt_img;
+}
+
+void
+applay_surface(int x, int y, SDL_Surface *source, SDL_Surface *dest) {
+    //Temporary rectangle to hold the offsets
+    SDL_Rect offset;
+
+    //Get the offsets
+    offset.x = x;
+    offset.y = y;
+
+    //Blit the surface
+    SDL_BlitSurface(source, NULL, dest, &offset);
 }
 
 void
@@ -66,6 +86,21 @@ free_media_all(SDL_Surface *surfaces[]) {
 	for (int i = 0; i < SUR_TOTAL; i++) {
 		free_media(surfaces[i]);
 	}
+}
+
+int
+get_ticks(int start_ticks) {
+	return SDL_GetTicks() - start_ticks;
+}
+
+void
+draw_map(SDL_Surface *screen) {
+	SDL_FillRect( screen, &screen->clip_rect, SDL_MapRGB( screen->format, 0xFF, 0xFF, 0xFF ) );
+}
+
+void
+show_plane(SDL_Surface *plane, SDL_Surface *screen) {
+	applay_surface((SCREEN_WIDTH/2) - (plane->w/2), SCREEN_HEIGHT-plane->h, plane, screen);
 }
 
 int
@@ -95,10 +130,11 @@ main() {
 
 	SDL_UpdateWindowSurface(window);
 
+	//waiting for game to start
 	SDL_Event e;
-	SDL_Surface *cur_surface;
 	bool quit = false;
-	while (!quit) {
+
+	while (quit == false) {
 		//Handle events on queue
 		while (SDL_PollEvent(&e) != 0) {
 			//User requests quit
@@ -107,14 +143,42 @@ main() {
 			} else if (e.type == SDL_KEYDOWN) {
 				switch (e.key.keysym.sym) {
 					case SDLK_SPACE:
-						cur_surface = surfaces[SUR_PLANE];
+						draw_map(screen);
+						quit = true;
 					break;
 				}
 			}
 		}
+	}
+	quit = false;
 
-		SDL_BlitSurface(cur_surface, NULL, screen, NULL);
+	//Keep track of the current frame
+	int frame = 0;
+
+	int start_ticks;
+
+	while (quit == false) {
+		//Start teh frame timer
+		start_ticks = SDL_GetTicks();
+
+		show_plane(surfaces[SUR_PLANE], screen);
+
+		//Handle events on queue
+		while (SDL_PollEvent(&e) != 0) {
+			//User requests quit
+			if (e.type == SDL_QUIT) {
+				quit = true;
+			} else if (e.type == SDL_KEYDOWN) {
+				switch (e.key.keysym.sym) {
+				}
+			}
+		}
 		SDL_UpdateWindowSurface(window);
+		frame++;
+
+		if (get_ticks(start_ticks) < 1000/FRAMES_PER_SECOND) {
+			SDL_Delay((1000/FRAMES_PER_SECOND) - get_ticks(start_ticks));
+		}
 	}
 
 	free_media_all(surfaces);
