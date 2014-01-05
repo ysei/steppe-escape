@@ -97,11 +97,6 @@ free_media_all(SDL_Surface *surfaces[]) {
 	}
 }
 
-int
-get_ticks(int start_ticks) {
-	return SDL_GetTicks() - start_ticks;
-}
-
 void
 gen_map() {
 }
@@ -210,9 +205,6 @@ main() {
 	}
 	quit = 0;
 
-	//Keep track of the current frame
-	int frame = 0;
-
 	int start_ticks;
 
 	Plane *plane;
@@ -247,10 +239,10 @@ main() {
 		show_plane(plane, screen);
 
 		SDL_UpdateWindowSurface(window);
-		frame++;
 
-		if (get_ticks(start_ticks) < 1000/FRAMES_PER_SECOND) {
-			SDL_Delay((1000/FRAMES_PER_SECOND) - get_ticks(start_ticks));
+		int ticks = SDL_GetTicks() - start_ticks;
+		if (ticks < 1000/FRAMES_PER_SECOND) {
+			SDL_Delay((1000/FRAMES_PER_SECOND) - ticks);
 		}
 	}
 
