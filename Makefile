@@ -1,13 +1,13 @@
-CC = g++
+CC = gcc
 SDLDIR = /home/hafron/dev/steppe-escape/src/sdl2
 LIBDIR = ${SDLDIR}/lib
 INCDIR = ${SDLDIR}/include/SDL2
 
-CFLAGS = -std=c++0x -pedantic -Wall -ggdb3 -I${INCDIR}
+CFLAGS = -std=c99 -pedantic -Wall -ggdb3 -I${INCDIR}
 LDFLAGS = -L${LIBDIR} -Wl,-rpath -Wl,${LIBDIR} -lSDL2
 
-SRC = se.cpp
-OBJ = ${SRC:.cpp=.o}
+SRC = se.c
+OBJ = ${SRC:.c=.o}
 
 all: options se
 
@@ -17,7 +17,7 @@ options:
 	@echo "LDFLAGS  = ${LDFLAGS}"
 	@echo "CC       = ${CC}"
 
-.cpp.o:
+.c.o:
 	@echo CC $<
 	@${CC} -c ${CFLAGS} $<
 

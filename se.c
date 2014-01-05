@@ -1,17 +1,16 @@
-#include <cstdio>
-#include <iostream>
-#include <cstdarg>
-#include <cstdlib>
+#include <stdio.h>
+#include <stdarg.h>
+#include <stdlib.h>
+#include <string.h>
 #include <SDL.h>
 
 #include "map.xpm"
 //Game Scale: 1px = 0,21559m
 //River Length: 525km = 525000m = 2435177px
 //KWS1: Rozpietosc: 9,04m Dlugosc: 7,33m(34px) Wysokosc: 2,7m
-using namespace std;
 
 const int MAX_PATH_LEN = 100;
-const string IMAGE_PATH = "images";
+const char IMAGE_PATH[] = "images";
 
 //Screen dimension constants 
 const int SCREEN_WIDTH = 960;
@@ -26,28 +25,37 @@ enum Surfaces {
 	SUR_TOTAL,
 };
 
-const string Images[] = {"start.bmp", "steppe.bmp", "kws1.bmp"};
+const char *Images[] = {"start.bmp", "steppe.bmp", "kws1.bmp"};
 
 void
-error(string msg, ...) {
+error(char *msg, ...) {
 	va_list arg;
 	va_start(arg, msg);
-	vfprintf(stderr, msg.c_str(), arg);
+	vfprintf(stderr, msg, arg);
 	exit(EXIT_FAILURE);
 }
 
 SDL_Surface *
-load_media(string src, SDL_Surface *screen) {
+load_media(const char *src, SDL_Surface *screen) {
 	SDL_Surface *img, *opt_img;
-	string path = "";
-	path = IMAGE_PATH + "/" + src;
-	img = SDL_LoadBMP(path.c_str());
+	char path[MAX_PATH_LEN]; 
+	int path_len;
+
+	strcpy(path, IMAGE_PATH);
+
+	path_len = strlen(path);
+	path[path_len++] = '/';
+	path[path_len] = '\0';
+
+	strcat(path, src);
+
+	img = SDL_LoadBMP(path);
 	if (img == NULL) {
-		error("Unable to load image %s! SDL Error: %s\n", path.c_str(), SDL_GetError());
+		error("Unable to load image %s! SDL Error: %s\n", path, SDL_GetError());
 	}
 	opt_img = SDL_ConvertSurface(img, screen->format, 0);
 	if (opt_img == NULL) {
-		error("Unable to optimize image %s! SDL Error: %s\n", path.c_str(), SDL_GetError());
+		error("Unable to optimize image %s! SDL Error: %s\n", path, SDL_GetError());
 	}
 	//Get rid of unoptimalized surface
 	SDL_FreeSurface(img);
@@ -143,6 +151,16 @@ move_plane(Plane *plane) {
 	plane->y += plane->y_vel;
 }
 
+void *
+emalloc(size_t size) {
+	void *p;
+	p = malloc(size);
+	if (p == NULL) {
+		error("emalloc: cannot allocate memory\n");
+	}
+	return p;
+}
+
 int
 main() {
 	SDL_Surface *screen, *surfaces[SUR_TOTAL];
@@ -172,25 +190,25 @@ main() {
 
 	//waiting for game to start
 	SDL_Event e;
-	bool quit = false;
+	int quit = 0;
 
-	while (quit == false) {
+	while (quit == 0) {
 		//Handle events on queue
 		while (SDL_PollEvent(&e) != 0) {
 			//User requests quit
 			if (e.type == SDL_QUIT) {
-				quit = true;
+				quit = 1;
 			} else if (e.type == SDL_KEYDOWN) {
 				switch (e.key.keysym.sym) {
 					case SDLK_SPACE:
 						gen_map();
-						quit = true;
+						quit = 1;
 					break;
 				}
 			}
 		}
 	}
-	quit = false;
+	quit = 0;
 
 	//Keep track of the current frame
 	int frame = 0;
@@ -198,7 +216,7 @@ main() {
 	int start_ticks;
 
 	Plane *plane;
-	plane = new Plane;
+	plane = emalloc(sizeof(Plane));
 
    	plane->sur = surfaces[SUR_PLANE];
 	plane->x = (SCREEN_WIDTH/2) - (plane->sur->w/2);
@@ -206,7 +224,7 @@ main() {
 	plane->x_vel = 0;
 	plane->y_vel = 0;
 
-	while (quit == false) {
+	while (quit == 0) {
 		//Start teh frame timer
 		start_ticks = SDL_GetTicks();
 
@@ -217,7 +235,7 @@ main() {
 
 			//User requests quit
 			if (e.type == SDL_QUIT) {
-				quit = true;
+				quit = 1;
 			} else if (e.type == SDL_KEYDOWN) {
 				switch (e.key.keysym.sym) {
 				}
