@@ -4,13 +4,14 @@
 #include <string.h>
 #include <SDL.h>
 
-#include "map.xpm"
+#include "levels/1.xpm"
 //Game Scale: 1px = 0,21559m
 //River Length: 525km = 525000m = 2435177px
 //KWS1: Rozpietosc: 9,04m Dlugosc: 7,33m(34px) Wysokosc: 2,7m
 
 const int MAX_PATH_LEN = 100;
 const char IMAGE_PATH[] = "images";
+const char LEVEL_PATH[] = "levels";
 
 //Screen dimension constants 
 const int SCREEN_WIDTH = 960;
@@ -18,14 +19,20 @@ const int SCREEN_HEIGHT = 540;
 
 const int FRAMES_PER_SECOND = 20;
 
+const int PLANE_X_SPEED = 10;
+
 enum Surfaces {
 	SUR_START,
-	SUR_STEPPE,
 	SUR_PLANE,
 	SUR_TOTAL,
 };
+const char *Images[] = {"start.bmp", "kws1.bmp"};
 
-const char *Images[] = {"start.bmp", "steppe.bmp", "kws1.bmp"};
+enum Levels {
+	LEVEL_1,
+	LEVEL_TOTAL,
+};
+
 
 void
 error(char *msg, ...) {
@@ -38,24 +45,14 @@ error(char *msg, ...) {
 SDL_Surface *
 load_media(const char *src, SDL_Surface *screen) {
 	SDL_Surface *img, *opt_img;
-	char path[MAX_PATH_LEN]; 
-	int path_len;
 
-	strcpy(path, IMAGE_PATH);
-
-	path_len = strlen(path);
-	path[path_len++] = '/';
-	path[path_len] = '\0';
-
-	strcat(path, src);
-
-	img = SDL_LoadBMP(path);
+	img = SDL_LoadBMP(src);
 	if (img == NULL) {
-		error("Unable to load image %s! SDL Error: %s\n", path, SDL_GetError());
+		error("Unable to load image %s! SDL Error: %s\n", src, SDL_GetError());
 	}
 	opt_img = SDL_ConvertSurface(img, screen->format, 0);
 	if (opt_img == NULL) {
-		error("Unable to optimize image %s! SDL Error: %s\n", path, SDL_GetError());
+		error("Unable to optimize image %s! SDL Error: %s\n", src, SDL_GetError());
 	}
 	//Get rid of unoptimalized surface
 	SDL_FreeSurface(img);
@@ -65,7 +62,7 @@ load_media(const char *src, SDL_Surface *screen) {
 }
 
 void
-applay_surface(int x, int y, SDL_Surface *source, SDL_Surface *dest) {
+apply_surface(int x, int y, SDL_Surface *source, SDL_Surface *dest, SDL_Rect *clip) {
     //Temporary rectangle to hold the offsets
     SDL_Rect offset;
 
@@ -82,68 +79,96 @@ free_media(SDL_Surface *img) {
 	SDL_FreeSurface(img);
 }
 
+//Add slash to path if is needed
+void
+add_slash_to_path(char *new_path, const char *old_path) {
+	int path_len;
+
+	strcpy(new_path, old_path);
+
+	path_len = strlen(new_path);
+
+	new_path[path_len++] = '/';
+	new_path[path_len] = '\0';
+}
 
 void
-load_media_all(SDL_Surface *surfaces[], SDL_Surface *screen) {
+load_media_all(SDL_Surface *surfaces[], SDL_Surface *levels[], SDL_Surface *screen) {
+	char path[MAX_PATH_LEN]; 
+
 	for (int i = 0; i < SUR_TOTAL; i++) {
-		surfaces[i] = load_media(Images[i], screen);
+
+		add_slash_to_path(path, IMAGE_PATH);
+		strcat(path, Images[i]);
+
+		surfaces[i] = load_media(path, screen);
+	}
+
+	for (int i = 0; i < LEVEL_TOTAL; i++) {
+
+		add_slash_to_path(path, LEVEL_PATH);
+
+		char l_name[MAX_PATH_LEN];
+		sprintf(l_name, "%d.bmp", i+1);
+
+		strcat(path, l_name);
+
+		levels[i] = load_media(path, screen);
 	}
 }
 
 void
-free_media_all(SDL_Surface *surfaces[]) {
+free_media_all(SDL_Surface *surfaces[], SDL_Surface *levels[]) {
 	for (int i = 0; i < SUR_TOTAL; i++) {
 		free_media(surfaces[i]);
 	}
+	for (int i = 0; i < LEVEL_TOTAL; i++) {
+		free_media(levels[i]);
+	}
 }
 
 void
-gen_map() {
-}
-
-void
-draw_map(SDL_Surface *screen) {
+set_camera(SDL_Surface *screen) {
 	SDL_FillRect( screen, &screen->clip_rect, SDL_MapRGB( screen->format, 0xFF, 0xFF, 0xFF ) );
 }
 
 typedef struct Plane Plane;
 struct Plane {
-	int x, y, x_vel, y_vel;
+	int x, y;
+	SDL_Surface *sur;
+};
+
+typedef struct Level Level;
+struct Level{
 	SDL_Surface *sur;
 };
 
 void
 show_plane(Plane *plane, SDL_Surface *screen) {
-	applay_surface(plane->x, plane->y, plane->sur, screen);
+	apply_surface(plane->x, plane->y, plane->sur, screen, NULL);
 }
 
 void
-handle_plane_input(Plane *plane, SDL_Event *e) {
+handle_plane_input(Plane *plane, Level *level, SDL_Event *e) {
 	if (e->type == SDL_KEYDOWN) {
 		switch(e->key.keysym.sym) {
 			case SDLK_LEFT:
-				plane->x_vel -= plane->sur->w/2;
+				plane->x -= PLANE_X_SPEED;
 				break;
 			case SDLK_RIGHT:
-				plane->x_vel += plane->sur->w/2;
+				plane->x += PLANE_X_SPEED;
 				break;
 		}
-	} else if (e->type == SDL_KEYUP) {
-		switch(e->key.keysym.sym) {
-			case SDLK_LEFT:
-				plane->x_vel += plane->sur->w/2;
-				break;
-			case SDLK_RIGHT:
-				plane->x_vel -= plane->sur->w/2;
-				break;
-		}
+	} 
+	if (plane->x < 0) {
+		plane->x = 0;
+	} else if (plane->x > level->sur->w - plane->sur->w) {
+		plane->x = level->sur->w - plane->sur->w;
 	}
 }
 
 void
 move_plane(Plane *plane) {
-	plane->x += plane->x_vel;
-	plane->y += plane->y_vel;
 }
 
 void *
@@ -158,7 +183,7 @@ emalloc(size_t size) {
 
 int
 main() {
-	SDL_Surface *screen, *surfaces[SUR_TOTAL];
+	SDL_Surface *screen, *surfaces[SUR_TOTAL], *levels[LEVEL_TOTAL];
 	SDL_Window *window;
 
 	if (SDL_Init(SDL_INIT_VIDEO) < 0) {
@@ -171,7 +196,7 @@ main() {
 	} 
 
 	screen = SDL_GetWindowSurface(window);
-	load_media_all(surfaces, screen);
+	load_media_all(surfaces, levels, screen);
 
 	SDL_Rect screen_rect;
 	screen_rect.x = 0;
@@ -196,7 +221,6 @@ main() {
 			} else if (e.type == SDL_KEYDOWN) {
 				switch (e.key.keysym.sym) {
 					case SDLK_SPACE:
-						gen_map();
 						quit = 1;
 					break;
 				}
@@ -213,8 +237,12 @@ main() {
    	plane->sur = surfaces[SUR_PLANE];
 	plane->x = (SCREEN_WIDTH/2) - (plane->sur->w/2);
 	plane->y = SCREEN_HEIGHT-plane->sur->h;
-	plane->x_vel = 0;
-	plane->y_vel = 0;
+
+	Level *level;
+	level = emalloc(sizeof(Level));
+	level->sur = levels[LEVEL_1];
+
+	SDL_Rect camera = {0, 0, SCREEN_WIDTH, SCREEN_HEIGHT};
 
 	while (quit == 0) {
 		//Start teh frame timer
@@ -223,7 +251,7 @@ main() {
 		//Handle events on queue
 		while (SDL_PollEvent(&e) != 0) {
 
-			handle_plane_input(plane, &e);
+			handle_plane_input(plane, level, &e);
 
 			//User requests quit
 			if (e.type == SDL_QUIT) {
@@ -235,7 +263,9 @@ main() {
 		}
 		move_plane(plane);
 
-		draw_map(screen);
+		set_camera(screen);
+		apply_surface(0, 0, level->sur, screen, &camera);
+
 		show_plane(plane, screen);
 
 		SDL_UpdateWindowSurface(window);
@@ -246,7 +276,7 @@ main() {
 		}
 	}
 
-	free_media_all(surfaces);
+	free_media_all(surfaces, levels);
 
 	SDL_DestroyWindow(window);
 	window = NULL;
