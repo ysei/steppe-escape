@@ -17,9 +17,14 @@ const char LEVEL_PATH[] = "levels";
 const int SCREEN_WIDTH = 960;
 const int SCREEN_HEIGHT = 540;
 
-const int FRAMES_PER_SECOND = 20;
+const int FRAMES_PER_SECOND = 100;
 
 const int PLANE_X_SPEED = 10;
+
+const int PLANE_START_SPEED = 5;
+const int PLANE_SPEED_MAX = 10;
+const int PLANE_SPEED_MIN = 1;
+const int PLANE_SPEED_MULTIPLAYER = 1;
 
 enum Surfaces {
 	SUR_START,
@@ -31,6 +36,17 @@ const char *Images[] = {"start.bmp", "kws1.bmp"};
 enum Levels {
 	LEVEL_1,
 	LEVEL_TOTAL,
+};
+
+typedef struct Plane Plane;
+struct Plane {
+	int x, true_y, level_y, speed;
+	SDL_Surface *sur;
+};
+
+typedef struct Level Level;
+struct Level{
+	SDL_Surface *sur;
 };
 
 
@@ -71,7 +87,7 @@ apply_surface(int x, int y, SDL_Surface *source, SDL_Surface *dest, SDL_Rect *cl
     offset.y = y;
 
     //Blit the surface
-    SDL_BlitSurface(source, NULL, dest, &offset);
+    SDL_BlitSurface(source, clip, dest, &offset);
 }
 
 void
@@ -128,24 +144,20 @@ free_media_all(SDL_Surface *surfaces[], SDL_Surface *levels[]) {
 }
 
 void
-set_camera(SDL_Surface *screen) {
-	SDL_FillRect( screen, &screen->clip_rect, SDL_MapRGB( screen->format, 0xFF, 0xFF, 0xFF ) );
+set_camera(SDL_Rect *camera, Level *level, Plane *plane) {
+	static int road = 0;
+	road += plane->speed;
+
+	camera->y = level->sur->h - SCREEN_HEIGHT - road;
+
+	if (camera->y < 0) {
+		camera->y = 0;
+	}
 }
-
-typedef struct Plane Plane;
-struct Plane {
-	int x, y;
-	SDL_Surface *sur;
-};
-
-typedef struct Level Level;
-struct Level{
-	SDL_Surface *sur;
-};
 
 void
 show_plane(Plane *plane, SDL_Surface *screen) {
-	apply_surface(plane->x, plane->y, plane->sur, screen, NULL);
+	apply_surface(plane->x, plane->true_y, plane->sur, screen, NULL);
 }
 
 void
@@ -158,17 +170,35 @@ handle_plane_input(Plane *plane, Level *level, SDL_Event *e) {
 			case SDLK_RIGHT:
 				plane->x += PLANE_X_SPEED;
 				break;
+
+			case SDLK_UP:
+				plane->speed += PLANE_SPEED_MULTIPLAYER;
+				if (plane->speed > PLANE_SPEED_MAX) {
+					plane->speed = PLANE_SPEED_MAX;
+				}
+				break;
+			case SDLK_DOWN:
+				plane->speed -= PLANE_SPEED_MULTIPLAYER;
+				if (plane->speed < PLANE_SPEED_MIN) {
+					plane->speed = PLANE_SPEED_MIN;
+				}
+				break;
 		}
 	} 
+}
+
+void
+move_plane(Plane *plane, Level *level) {
 	if (plane->x < 0) {
 		plane->x = 0;
 	} else if (plane->x > level->sur->w - plane->sur->w) {
 		plane->x = level->sur->w - plane->sur->w;
 	}
-}
 
-void
-move_plane(Plane *plane) {
+	if (plane->level_y < plane->true_y) {
+		plane->true_y = plane->level_y;
+	}
+	plane->level_y -= plane->speed;
 }
 
 void *
@@ -231,16 +261,20 @@ main() {
 
 	int start_ticks;
 
+	Level *level;
+	level = emalloc(sizeof(Level));
+	level->sur = levels[LEVEL_1];
+
 	Plane *plane;
 	plane = emalloc(sizeof(Plane));
 
    	plane->sur = surfaces[SUR_PLANE];
 	plane->x = (SCREEN_WIDTH/2) - (plane->sur->w/2);
-	plane->y = SCREEN_HEIGHT-plane->sur->h;
+	plane->level_y = level->sur->h - plane->sur->h;
 
-	Level *level;
-	level = emalloc(sizeof(Level));
-	level->sur = levels[LEVEL_1];
+	plane->true_y = SCREEN_HEIGHT - plane->sur->h;
+	plane->speed = PLANE_START_SPEED;
+
 
 	SDL_Rect camera = {0, 0, SCREEN_WIDTH, SCREEN_HEIGHT};
 
@@ -261,9 +295,10 @@ main() {
 				}
 			}
 		}
-		move_plane(plane);
 
-		set_camera(screen);
+		move_plane(plane, level);
+		set_camera(&camera, level, plane);
+
 		apply_surface(0, 0, level->sur, screen, &camera);
 
 		show_plane(plane, screen);
