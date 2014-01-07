@@ -4,59 +4,12 @@
 #include <string.h>
 #include <SDL.h>
 
-#include "levels/1.xpm"
-//Game Scale: 1px = 0,21559m
-//River Length: 525km = 525000m = 2435177px
-//KWS1: Rozpietosc: 9,04m Dlugosc: 7,33m(34px) Wysokosc: 2,7m
+#include "utils.h"
+#include "config.h"
+#include "level.h"
+#include "se.h"
 
-const int MAX_PATH_LEN = 100;
-const char IMAGE_PATH[] = "images";
-const char LEVEL_PATH[] = "levels";
-
-//Screen dimension constants 
-const int SCREEN_WIDTH = 960;
-const int SCREEN_HEIGHT = 540;
-
-const int FRAMES_PER_SECOND = 100;
-
-const int PLANE_X_SPEED = 10;
-
-const int PLANE_START_SPEED = 5;
-const int PLANE_SPEED_MAX = 10;
-const int PLANE_SPEED_MIN = 1;
-const int PLANE_SPEED_MULTIPLAYER = 1;
-
-enum Surfaces {
-	SUR_START,
-	SUR_PLANE,
-	SUR_TOTAL,
-};
-const char *Images[] = {"start.bmp", "kws1.bmp"};
-
-enum Levels {
-	LEVEL_1,
-	LEVEL_TOTAL,
-};
-
-typedef struct Plane Plane;
-struct Plane {
-	int x, true_y, level_y, speed;
-	SDL_Surface *sur;
-};
-
-typedef struct Level Level;
-struct Level{
-	SDL_Surface *sur;
-};
-
-
-void
-error(char *msg, ...) {
-	va_list arg;
-	va_start(arg, msg);
-	vfprintf(stderr, msg, arg);
-	exit(EXIT_FAILURE);
-}
+#include "levels/l1.xpm"
 
 SDL_Surface *
 load_media(const char *src, SDL_Surface *screen) {
@@ -72,6 +25,7 @@ load_media(const char *src, SDL_Surface *screen) {
 	}
 	//Get rid of unoptimalized surface
 	SDL_FreeSurface(img);
+
 	Uint32 color_key = SDL_MapRGB(opt_img->format, 0, 0xFF, 0xFF);
 	SDL_SetColorKey(opt_img, SDL_TRUE, color_key);
 	return opt_img;
@@ -125,7 +79,7 @@ load_media_all(SDL_Surface *surfaces[], SDL_Surface *levels[], SDL_Surface *scre
 		add_slash_to_path(path, LEVEL_PATH);
 
 		char l_name[MAX_PATH_LEN];
-		sprintf(l_name, "%d.bmp", i+1);
+		sprintf(l_name, "%s%d.bmp", LEVEL_PREFIX, i+1);
 
 		strcat(path, l_name);
 
@@ -201,16 +155,6 @@ move_plane(Plane *plane, Level *level) {
 	plane->level_y -= plane->speed;
 }
 
-void *
-emalloc(size_t size) {
-	void *p;
-	p = malloc(size);
-	if (p == NULL) {
-		error("emalloc: cannot allocate memory\n");
-	}
-	return p;
-}
-
 int
 main() {
 	SDL_Surface *screen, *surfaces[SUR_TOTAL], *levels[LEVEL_TOTAL];
@@ -264,6 +208,8 @@ main() {
 	Level *level;
 	level = emalloc(sizeof(Level));
 	level->sur = levels[LEVEL_1];
+
+	load_level(level, l1_xpm, LEVEL_RIVER_MASK, SCREEN_WIDTH);
 
 	Plane *plane;
 	plane = emalloc(sizeof(Plane));

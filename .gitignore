@@ -1,3 +1,5 @@
 *.o
 se
 *.swp
+
+tests/run_tests
