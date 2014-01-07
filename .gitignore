@@ -2,4 +2,4 @@
 se
 *.swp
 
-tests/run_tests
+tests/run*

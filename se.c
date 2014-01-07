@@ -156,6 +156,24 @@ move_plane(Plane *plane, Level *level) {
 }
 
 int
+collision_detect(Rect_Vect *a, Rect_Vect *b) {
+	return 0;
+}
+
+int
+land_collision(Plane *plane, Level *level) {
+	//check only positions that matters
+	Rect_Vect strip;
+	strip.tab = NULL;
+	for (size_t i = plane->level_y; i <= plane->level_y + plane->sur->w; i++) {
+		vect_add(level->boxes.tab[i], &strip);
+	}
+	vect_print(&strip);
+
+	return collision_detect(&plane->boxes, &strip);
+}
+
+int
 main() {
 	SDL_Surface *screen, *surfaces[SUR_TOTAL], *levels[LEVEL_TOTAL];
 	SDL_Window *window;
@@ -164,7 +182,13 @@ main() {
 		error("SDL could not initialize! SDL_Error: %s\n", SDL_GetError());
 	}
 
-	window = SDL_CreateWindow("Steppe Ride", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
+	window = SDL_CreateWindow(
+			"Steppe Ride", 
+			 SDL_WINDOWPOS_UNDEFINED,
+			 SDL_WINDOWPOS_UNDEFINED,
+			 SCREEN_WIDTH,
+			 SCREEN_HEIGHT,
+			 SDL_WINDOW_SHOWN);
 	if (window == NULL) {
 		 error("Window could not be created! SDL_Error: %s\n", SDL_GetError());
 	} 
@@ -205,22 +229,41 @@ main() {
 
 	int start_ticks;
 
-	Level *level;
-	level = emalloc(sizeof(Level));
-	level->sur = levels[LEVEL_1];
+	Level level;
+	level.sur = levels[LEVEL_1];
 
-	load_level(level, l1_xpm, LEVEL_RIVER_MASK, SCREEN_WIDTH);
+	load_level(&level, l1_xpm, LEVEL_RIVER_MASK, SCREEN_WIDTH);
 
-	Plane *plane;
-	plane = emalloc(sizeof(Plane));
+	Plane plane;
 
-   	plane->sur = surfaces[SUR_PLANE];
-	plane->x = (SCREEN_WIDTH/2) - (plane->sur->w/2);
-	plane->level_y = level->sur->h - plane->sur->h;
+   	plane.sur = surfaces[SUR_PLANE];
+	plane.x = (SCREEN_WIDTH/2) - (plane.sur->w/2);
+	plane.level_y = level.sur->h - plane.sur->h;
 
-	plane->true_y = SCREEN_HEIGHT - plane->sur->h;
-	plane->speed = PLANE_START_SPEED;
+	plane.true_y = SCREEN_HEIGHT - plane.sur->h;
+	plane.speed = PLANE_START_SPEED;
 
+	plane.boxes.tab = NULL;
+
+	Rect rect;
+
+	rect.w = 6;
+	rect.h = 10;
+	rect.x = plane.x + 21;
+	rect.y = plane.level_y - plane.sur->w;
+	vect_add(rect, &plane.boxes);
+
+	rect.w = 44;
+	rect.h = 7;
+	rect.x = plane.x + 2;
+	rect.y = plane.level_y - plane.sur->w - 6;
+	vect_add(rect, &plane.boxes);
+
+	rect.w = 6;
+	rect.h = 18;
+	rect.x = plane.x + 21;
+	rect.y = plane.level_y - plane.sur->w - 17;
+	vect_add(rect, &plane.boxes);
 
 	SDL_Rect camera = {0, 0, SCREEN_WIDTH, SCREEN_HEIGHT};
 
@@ -231,7 +274,7 @@ main() {
 		//Handle events on queue
 		while (SDL_PollEvent(&e) != 0) {
 
-			handle_plane_input(plane, level, &e);
+			handle_plane_input(&plane, &level, &e);
 
 			//User requests quit
 			if (e.type == SDL_QUIT) {
@@ -242,12 +285,17 @@ main() {
 			}
 		}
 
-		move_plane(plane, level);
-		set_camera(&camera, level, plane);
+		move_plane(&plane, &level);
+		set_camera(&camera, &level, &plane);
 
-		apply_surface(0, 0, level->sur, screen, &camera);
+		if (land_collision(&plane, &level)) {
+			SDL_Delay( 4000 );
+			break;
+		}
 
-		show_plane(plane, screen);
+		apply_surface(0, 0, level.sur, screen, &camera);
+
+		show_plane(&plane, screen);
 
 		SDL_UpdateWindowSurface(window);
 
