@@ -191,8 +191,6 @@ collision_detect(Rect_Vect *a, Rect_Vect *b) {
 	size_t top_a, top_b;
 	size_t bottom_a, bottom_b;
 
-	vect_print(b);
-
 	for (size_t i = 0; i < a->size; i++) {
 		left_a = a->tab[i].x;
 		right_a = a->tab[i].x + a->tab[i].w;

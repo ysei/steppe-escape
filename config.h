@@ -26,9 +26,10 @@ const int PLANE_SPEED_MULTIPLAYER = 1;
 enum Surfaces {
 	SUR_START,
 	SUR_PLANE,
+	SUR_OVERLORD,
 	SUR_TOTAL,
 };
-const char *Images[] = {"start.bmp", "kws1.bmp"};
+const char *Images[] = {"start.bmp", "kws1.bmp", "overlord.bmp"};
 
 enum Levels {
 	LEVEL_1,
