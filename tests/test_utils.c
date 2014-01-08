@@ -11,5 +11,10 @@ main() {
 
 	rects.tab = NULL;
 	vect_add(rect, &rects);
+	vect_print(&rects);
+
+	vect_clean(&rects);
+	vect_print(&rects);
+
 	return 0;
 }

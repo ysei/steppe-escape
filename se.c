@@ -142,6 +142,33 @@ handle_plane_input(Plane *plane, Level *level, SDL_Event *e) {
 }
 
 void
+change_plane_boxes(Plane *plane) {
+
+	vect_clean(&plane->boxes);
+
+	Rect rect;
+
+	rect.w = 6;
+	rect.h = 10;
+	rect.x = plane->x + 21;
+	rect.y = plane->level_y;
+	vect_add(rect, &plane->boxes);
+
+	rect.w = 44;
+	rect.h = 7;
+	rect.x = plane->x + 2;
+	rect.y = plane->level_y + 6;
+	vect_add(rect, &plane->boxes);
+
+	rect.w = 6;
+	rect.h = 18;
+	rect.x = plane->x + 21;
+	rect.y = plane->level_y + 17;
+	vect_add(rect, &plane->boxes);
+
+}
+
+void
 move_plane(Plane *plane, Level *level) {
 	if (plane->x < 0) {
 		plane->x = 0;
@@ -153,24 +180,79 @@ move_plane(Plane *plane, Level *level) {
 		plane->true_y = plane->level_y;
 	}
 	plane->level_y -= plane->speed;
+
+	change_plane_boxes(plane);
 }
 
 int
 collision_detect(Rect_Vect *a, Rect_Vect *b) {
+	size_t left_a, left_b;
+	size_t right_a, right_b;
+	size_t top_a, top_b;
+	size_t bottom_a, bottom_b;
+
+	vect_print(b);
+
+	for (size_t i = 0; i < a->size; i++) {
+		left_a = a->tab[i].x;
+		right_a = a->tab[i].x + a->tab[i].w;
+		top_a = a->tab[i].y;
+		bottom_a = a->tab[i].y + a->tab[i].h;
+		for (size_t j = 0; j < b->size; j++) {
+			left_b = b->tab[j].x;
+			right_b = b->tab[j].x + b->tab[j].w;
+			top_b = b->tab[j].y;
+			bottom_b = b->tab[j].y + b->tab[j].h;
+
+			/*if (!(bottom_a <= top_b || top_a >= bottom_b)) {
+			}*/
+
+			//if ((bottom_a <= top_b && top_a <= bottom_b) && (left_b <= right_a && right_b >= left_a)) {
+			if ( ! ( ( bottom_a <= top_b ) || ( top_a >= bottom_b ) || ( right_a <= left_b ) || ( left_a >= right_b ) ) ) {
+				printf("%zu. %zu %zu %zu %zu\n",i, left_a, right_a, top_a, bottom_a);
+				printf("%zu %zu %zu %zu\n\n", left_b, right_b, top_b, bottom_b);
+				return 1;
+			}
+		}
+	}
 	return 0;
 }
 
 int
-land_collision(Plane *plane, Level *level) {
+land_collision(Plane *plane, Level *level, size_t *last_pos) {
 	//check only positions that matters
 	Rect_Vect strip;
 	strip.tab = NULL;
-	for (size_t i = plane->level_y; i <= plane->level_y + plane->sur->w; i++) {
-		vect_add(level->boxes.tab[i], &strip);
+	strip.size = 0;
+	strip.max  = 0;
+
+	for (size_t pos = *last_pos; pos >= 0 && level->boxes.tab[pos].y >= plane->boxes.tab[0].y; pos--) {
+		vect_add(level->boxes.tab[pos], &strip);
 	}
-	vect_print(&strip);
 
 	return collision_detect(&plane->boxes, &strip);
+}
+
+void
+wait_for_space() {
+	//waiting for game to start
+	SDL_Event e;
+	int quit = 0;
+	while (quit == 0) {
+		//Handle events on queue
+		while (SDL_PollEvent(&e) != 0) {
+			//User requests quit
+			if (e.type == SDL_QUIT) {
+				quit = 1;
+			} else if (e.type == SDL_KEYDOWN) {
+				switch (e.key.keysym.sym) {
+					case SDLK_SPACE:
+						quit = 1;
+					break;
+				}
+			}
+		}
+	}
 }
 
 int
@@ -206,26 +288,10 @@ main() {
 
 	SDL_UpdateWindowSurface(window);
 
-	//waiting for game to start
-	SDL_Event e;
-	int quit = 0;
+	//waiting to start the game
+	wait_for_space();
 
-	while (quit == 0) {
-		//Handle events on queue
-		while (SDL_PollEvent(&e) != 0) {
-			//User requests quit
-			if (e.type == SDL_QUIT) {
-				quit = 1;
-			} else if (e.type == SDL_KEYDOWN) {
-				switch (e.key.keysym.sym) {
-					case SDLK_SPACE:
-						quit = 1;
-					break;
-				}
-			}
-		}
-	}
-	quit = 0;
+	int quit = 0;
 
 	int start_ticks;
 
@@ -244,29 +310,13 @@ main() {
 	plane.speed = PLANE_START_SPEED;
 
 	plane.boxes.tab = NULL;
+	change_plane_boxes(&plane);
 
-	Rect rect;
-
-	rect.w = 6;
-	rect.h = 10;
-	rect.x = plane.x + 21;
-	rect.y = plane.level_y - plane.sur->w;
-	vect_add(rect, &plane.boxes);
-
-	rect.w = 44;
-	rect.h = 7;
-	rect.x = plane.x + 2;
-	rect.y = plane.level_y - plane.sur->w - 6;
-	vect_add(rect, &plane.boxes);
-
-	rect.w = 6;
-	rect.h = 18;
-	rect.x = plane.x + 21;
-	rect.y = plane.level_y - plane.sur->w - 17;
-	vect_add(rect, &plane.boxes);
 
 	SDL_Rect camera = {0, 0, SCREEN_WIDTH, SCREEN_HEIGHT};
 
+	SDL_Event e;
+	size_t last_land_pos = level.boxes.size - 1;
 	while (quit == 0) {
 		//Start teh frame timer
 		start_ticks = SDL_GetTicks();
@@ -288,16 +338,17 @@ main() {
 		move_plane(&plane, &level);
 		set_camera(&camera, &level, &plane);
 
-		if (land_collision(&plane, &level)) {
-			SDL_Delay( 4000 );
-			break;
-		}
-
 		apply_surface(0, 0, level.sur, screen, &camera);
 
 		show_plane(&plane, screen);
 
 		SDL_UpdateWindowSurface(window);
+
+		if (land_collision(&plane, &level, &last_land_pos)) {
+			wait_for_space();
+			break;
+		}
+
 
 		int ticks = SDL_GetTicks() - start_ticks;
 		if (ticks < 1000/FRAMES_PER_SECOND) {

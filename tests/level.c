@@ -21,7 +21,7 @@ load_level(Level *level, char *xpm[], RGB_Color color, size_t screen_width) {
 		//I assume here that colors are in format: #XXXXXX
 		char ch, code[8];
 		sscanf(xpm[i], "%1c %*c %s", &ch, code);
-		if (strcmp(code, "#00FFFF")) {
+		if (strcmp(code, "#00FFFF") == 0) {
 			wather_ch = ch;
 		}
 	}
@@ -30,8 +30,9 @@ load_level(Level *level, char *xpm[], RGB_Color color, size_t screen_width) {
 	}
 
 	level->boxes.tab = NULL;
+
 	size_t lv_start_line = colors + 1;
-	for (size_t i = lv_start_line; i < width + lv_start_line; i++) {
+	for (size_t i = lv_start_line; i < height + lv_start_line; i++) {
 
 		size_t w = 0, start_x = 0;
 		for (size_t j = 0; j < strlen(xpm[i]); j++) {

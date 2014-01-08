@@ -49,7 +49,16 @@ vect_add(Rect rect, Rect_Vect *vect) {
 
 void
 vect_print(Rect_Vect *vect) {
+	printf("size: %zu max: %zu\n", vect->size, vect->max);
 	for (size_t i = 0; i < vect->size; i++) {
 		printf("%zu. x: %zu y:%zu: w: %zu h: %zu\n", i, vect->tab[i].x, vect->tab[i].y, vect->tab[i].w, vect->tab[i].h);
 	}
+}
+
+void
+vect_clean(Rect_Vect *vect) {
+	free(vect->tab);
+	vect->tab = NULL;
+	vect->size = 0;
+	vect->max = 0;
 }

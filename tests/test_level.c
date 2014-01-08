@@ -7,9 +7,11 @@
 #include "../utils.h"
 #include "../level.h"
 
+#include "l1.xpm"
+
 
 /* XPM */
-static char * l1_xpm[] = {
+static char * s_xpm[] = {
 "10 10 3 1",
 " 	c None",
 ".	c #000000",
@@ -36,8 +38,6 @@ main() {
 	}
 	printf("\n");
 
-	load_level(&level, l1_xpm, color, 10);
-	for (size_t i = 0; i < level.boxes.size; i++) {
-		printf("%zu. x: %zu y:%zu: w: %zu h: %zu\n", i, level.boxes.tab[i].x, level.boxes.tab[i].y, level.boxes.tab[i].w, level.boxes.tab[i].h);
-	}
+	load_level(&level, l1_xpm, color, 960);
+	vect_print(&level.boxes);
 }

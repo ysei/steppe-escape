@@ -26,3 +26,8 @@ emalloc(size_t size);
 void
 vect_add(Rect rect, Rect_Vect *vect);
 
+void
+vect_print(Rect_Vect *vect);
+
+void
+vect_clean(Rect_Vect *vect);
