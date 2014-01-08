@@ -31,3 +31,6 @@ vect_print(Rect_Vect *vect);
 
 void
 vect_clean(Rect_Vect *vect);
+
+void
+vect_del(size_t ind, Rect_Vect *vect);

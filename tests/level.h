@@ -6,4 +6,4 @@ struct Level{
 
 
 void
-load_level(Level *level, char *xpm[], RGB_Color color, size_t screen_width);
+load_level(Level *level, char *xpm[], Rect_Vect *overlords, RGB_Color color, size_t screen_width);

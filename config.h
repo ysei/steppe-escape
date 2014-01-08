@@ -23,6 +23,10 @@ const int PLANE_SPEED_MAX = 10;
 const int PLANE_SPEED_MIN = 1;
 const int PLANE_SPEED_MULTIPLAYER = 1;
 
+const int BULLET_SPEED = 20;
+//Mustafar LK Theorotical Rate: 250 (shoots/min) 
+const int THEORETICAL_RATE = 250;
+
 enum Surfaces {
 	SUR_START,
 	SUR_PLANE,

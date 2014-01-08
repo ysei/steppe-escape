@@ -12,16 +12,17 @@
 
 /* XPM */
 static char * s_xpm[] = {
-"10 10 3 1",
+"10 10 4 1",
 " 	c None",
 ".	c #000000",
 "+	c #00FFFF",
-".+..++++..",
-".+..++++..",
+"@  c #FF0000",
 "....++++..",
 "....++++..",
 "....++++..",
 "....++++..",
+"....+@@+..",
+"....+@@+..",
 "....++++..",
 "....++++..",
 "....++++..",
@@ -33,11 +34,11 @@ main() {
 	Level level;
 	RGB_Color color;
 
-	for (size_t i = 4; i < 14; i++) {
-		printf("%zu. %s\n",i - 4, l1_xpm[i]);
+	for (size_t i = 5; i < 15; i++) {
+		printf("%zu. %s\n",i - 4, s_xpm[i]);
 	}
 	printf("\n");
 
-	load_level(&level, l1_xpm, color, 960);
+	load_level(&level, s_xpm, color, 10);
 	vect_print(&level.boxes);
 }

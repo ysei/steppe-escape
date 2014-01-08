@@ -62,3 +62,14 @@ vect_clean(Rect_Vect *vect) {
 	vect->size = 0;
 	vect->max = 0;
 }
+
+void
+vect_del(size_t ind, Rect_Vect *vect) {
+	if (ind < vect->size) {
+		if (memmove(&vect->tab[ind], &vect->tab[ind+1], (vect->size-1 - ind) * sizeof(Rect)) == NULL) {
+			error("vect_del: Cannot delete elm from vector\n");
+		} else {
+			vect->size--;
+		}
+	}
+}
