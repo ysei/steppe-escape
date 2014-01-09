@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <SDL.h>
+#include <SDL/SDL_mixer.h>
+#include <SDL/SDL_ttf.h>
 
 #include "utils.h"
 #include "config.h"
@@ -63,7 +65,7 @@ add_slash_to_path(char *new_path, const char *old_path) {
 }
 
 void
-load_media_all(SDL_Surface *surfaces[], SDL_Surface *levels[], SDL_Surface *screen) {
+load_media_all(SDL_Surface *surfaces[], SDL_Surface *levels[], TTF_Font *fonts[], Mix_Chunk *sounds[], SDL_Surface *screen) {
 	char path[MAX_PATH_LEN]; 
 
 	for (int i = 0; i < SUR_TOTAL; i++) {
@@ -71,7 +73,9 @@ load_media_all(SDL_Surface *surfaces[], SDL_Surface *levels[], SDL_Surface *scre
 		add_slash_to_path(path, IMAGE_PATH);
 		strcat(path, Images[i]);
 
-		surfaces[i] = load_media(path, screen);
+		if ((surfaces[i] = load_media(path, screen)) == NULL) {
+			error("load_media_all: Cannot open surface: %s\n", path);
+		}
 	}
 
 	for (int i = 0; i < LEVEL_TOTAL; i++) {
@@ -83,7 +87,30 @@ load_media_all(SDL_Surface *surfaces[], SDL_Surface *levels[], SDL_Surface *scre
 
 		strcat(path, l_name);
 
-		levels[i] = load_media(path, screen);
+		if ((levels[i] = load_media(path, screen)) == NULL) {
+			error("load_media_all: Cannot open level: %s\n", path);
+		}
+	}
+	
+	//fonts
+	for (int i = 0; i < FONT_TOTAL; i++) {
+
+		add_slash_to_path(path, FONT_PATH);
+		strcat(path, Fonts[i]);
+
+		if ((fonts[i] = TTF_OpenFont(path,  Fonts_Sizes[i])) == NULL) {
+			//error("load_media_all: Cannot open font: %s: %s\n", path, TTF_GetError());
+		}
+	}
+
+	for (int i = 0; i < SOUND_TOTAL; i++) {
+
+		add_slash_to_path(path, SOUND_PATH);
+		strcat(path, Sounds[i]);
+
+		if ((sounds[i] = Mix_LoadWAV(path)) == NULL) {
+			//error("load_media_all: Cannot load sound: %s: %s\n", path, Mix_GetError());
+		}
 	}
 }
 
@@ -273,8 +300,33 @@ main() {
 		 error("Window could not be created! SDL_Error: %s\n", SDL_GetError());
 	} 
 
+	//Initialize SDL_ttf
+	if (TTF_Init() == -1) {
+		error("Could not initialise sdl_ttf.");
+	}
+	//Initialize SDL_mixer
+	if (Mix_OpenAudio( 22050, MIX_DEFAULT_FORMAT, 2, 4096) == -1) {
+		error("Could not initialise sdl_mixer: %s", Mix_GetError());
+	}
+
+	// load support for the OGG and MOD sample/music formats
+	int mix_flags = MIX_INIT_OGG|MIX_INIT_MOD;
+	int mix_initted = Mix_Init(mix_flags);
+	if ((mix_initted & mix_flags) != mix_flags) {
+	     error("Mix_Init: Failed to init required ogg and mod support: %s\n", Mix_GetError());
+	}
+
 	screen = SDL_GetWindowSurface(window);
-	load_media_all(surfaces, levels, screen);
+
+	TTF_Font *fonts[FONT_TOTAL];
+	Mix_Chunk *sounds[SOUND_TOTAL];
+	Mix_Music *music;
+
+	load_media_all(surfaces, levels, fonts, sounds, screen);
+
+	if ((music = Mix_LoadMUS("sounds/Betty_Roche-Trouble_Trouble.ogg")) == NULL) {
+	     error("Mix_LoadMUS: %s\n", Mix_GetError());
+	}
 
 	SDL_Rect screen_rect;
 	screen_rect.x = 0;
@@ -417,6 +469,7 @@ gameover:
 	window = NULL;
 
 	SDL_Quit();
+	Mix_Quit();
 
 	exit(EXIT_SUCCESS);
 }

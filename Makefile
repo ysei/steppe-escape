@@ -3,8 +3,8 @@ SDLDIR = /home/hafron/dev/steppe-escape/src/sdl2
 LIBDIR = ${SDLDIR}/lib
 INCDIR = ${SDLDIR}/include/SDL2
 
-CFLAGS = -std=c99 -pedantic -Wall -ggdb3 -I${INCDIR}
-LDFLAGS = -L${LIBDIR} -Wl,-rpath -Wl,${LIBDIR} -lSDL2
+CFLAGS = -std=c99 -pedantic -Wall -ggdb3 -I${INCDIR} -D_REENTRANT
+LDFLAGS = -L${LIBDIR} -Wl,-rpath -Wl,${LIBDIR} -lSDL2 -lSDL_ttf -lSDL_mixer
 
 SRC = se.c utils.c level.c
 OBJ = ${SRC:.c=.o}

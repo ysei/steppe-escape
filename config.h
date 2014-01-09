@@ -27,6 +27,10 @@ const int BULLET_SPEED = 20;
 //Mustafar LK Theorotical Rate: 250 (shoots/min) 
 const int THEORETICAL_RATE = 250;
 
+const char FONT_PATH[] = "fonts";
+
+const char SOUND_PATH[] = "sounds";
+
 enum Surfaces {
 	SUR_START,
 	SUR_PLANE,
@@ -40,3 +44,15 @@ enum Levels {
 	LEVEL_TOTAL,
 };
 
+enum Font {
+	FONT_INFO,
+	FONT_TOTAL,
+};
+const char *Fonts[] = {"DejaVuSans.ttf"};
+const int Fonts_Sizes[] = {12};
+
+enum Sound {
+	SOUND_GUN,
+	SOUND_TOTAL,
+};
+const char *Sounds[] = {"machine_gun.ogg"};

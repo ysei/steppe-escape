@@ -3,6 +3,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <SDL.h>
+#include <SDL/SDL_ttf.h>
 
 #include "utils.h"
 #include "level.h"
@@ -70,10 +71,10 @@ load_level(Level *level, char *xpm[], Rect_Vect *overlords, RGB_Color color, siz
 				start_x++;
 				if (xpm[i][j] == overlord_ch && !part_of_rect(overlord_ch, xpm, i, j)) {
 					Rect overlord;
-					overlord.x = j;
-					overlord.y = i - lv_start_line;
-					overlord.w = 48;
-					overlord.h = 48;
+					overlord.x = j + 5;
+					overlord.y = i - lv_start_line + 5;
+					overlord.w = 38;
+					overlord.h = 38;
 					vect_add(overlord, overlords);
 					printf("overlord: %zu, %zu\n", overlord.x, overlord.y);
 				}
