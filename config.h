@@ -53,6 +53,9 @@ const int Fonts_Sizes[] = {12};
 
 enum Sound {
 	SOUND_GUN,
+	SOUND_OV_DEATH,
+	SOUND_ENGINE,
+	SOUND_BIG_EXPLOSION,
 	SOUND_TOTAL,
 };
-const char *Sounds[] = {"machine_gun.ogg"};
+const char *Sounds[] = {"gun_single.ogg", "ov_death.ogg", "machine1.ogg", "big_explosion.ogg"};

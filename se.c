@@ -99,7 +99,7 @@ load_media_all(SDL_Surface *surfaces[], SDL_Surface *levels[], TTF_Font *fonts[]
 		strcat(path, Fonts[i]);
 
 		if ((fonts[i] = TTF_OpenFont(path,  Fonts_Sizes[i])) == NULL) {
-			//error("load_media_all: Cannot open font: %s: %s\n", path, TTF_GetError());
+			error("load_media_all: Cannot open font: %s: %s\n", path, TTF_GetError());
 		}
 	}
 
@@ -109,18 +109,26 @@ load_media_all(SDL_Surface *surfaces[], SDL_Surface *levels[], TTF_Font *fonts[]
 		strcat(path, Sounds[i]);
 
 		if ((sounds[i] = Mix_LoadWAV(path)) == NULL) {
-			//error("load_media_all: Cannot load sound: %s: %s\n", path, Mix_GetError());
+			error("load_media_all: Cannot load sound: %s: %s\n", path, Mix_GetError());
 		}
 	}
 }
 
 void
-free_media_all(SDL_Surface *surfaces[], SDL_Surface *levels[]) {
+free_media_all(SDL_Surface *surfaces[], SDL_Surface *levels[], TTF_Font *fonts[], Mix_Chunk *sounds[]) {
 	for (int i = 0; i < SUR_TOTAL; i++) {
 		free_media(surfaces[i]);
 	}
 	for (int i = 0; i < LEVEL_TOTAL; i++) {
 		free_media(levels[i]);
+	}
+	//fonts
+	for (int i = 0; i < FONT_TOTAL; i++) {
+		TTF_CloseFont(fonts[i]);
+	}
+
+	for (int i = 0; i < SOUND_TOTAL; i++) {
+		Mix_FreeChunk(sounds[i]);
 	}
 }
 
@@ -309,11 +317,11 @@ main() {
 		error("Could not initialise sdl_mixer: %s", Mix_GetError());
 	}
 
-	// load support for the OGG and MOD sample/music formats
-	int mix_flags = MIX_INIT_OGG|MIX_INIT_MOD;
+	// load support for the OGG  sample/music formats
+	int mix_flags = MIX_INIT_OGG;
 	int mix_initted = Mix_Init(mix_flags);
 	if ((mix_initted & mix_flags) != mix_flags) {
-	     error("Mix_Init: Failed to init required ogg and mod support: %s\n", Mix_GetError());
+	     error("Mix_Init: Failed to init required ogg support: %s\n", Mix_GetError());
 	}
 
 	screen = SDL_GetWindowSurface(window);
@@ -338,6 +346,7 @@ main() {
 
 	SDL_UpdateWindowSurface(window);
 
+	Mix_PlayMusic(music, -1);
 	//waiting to start the game
 	wait_for_space();
 
@@ -377,6 +386,7 @@ main() {
 	int reload = (1000/(THEORETICAL_RATE/60)) / FRAMES_PER_SECOND;
 	int frames_to_shoot = 0;
 
+	Mix_PlayChannel(-1, sounds[SOUND_ENGINE], -1);
 	while (quit == 0) {
 		//Start teh frame timer
 		start_ticks = SDL_GetTicks();
@@ -395,6 +405,7 @@ main() {
 				switch (e.key.keysym.sym) {
 					case SDLK_SPACE:
 						if (frames_to_shoot <= 0) {
+							Mix_PlayChannel(-1, sounds[SOUND_GUN], 0);
 							bullet.w = 1;
 							bullet.h = 10;
 							bullet.x = plane.x + plane.sur->w/2;
@@ -435,17 +446,16 @@ main() {
 		SDL_UpdateWindowSurface(window);
 
 		if (land_collision(&plane, &level, &last_land_pos)) {
-			wait_for_space();
 			goto gameover;
 		}
 
 		if (collision_detect(&plane.boxes, &overlords, NULL, NULL)) {
-			wait_for_space();
 			goto gameover;
 		}
 
 		size_t ov_box, bul_box;
 		if (collision_detect(&overlords, &bullets, &ov_box, &bul_box)) {
+			Mix_PlayChannel(-1, sounds[SOUND_OV_DEATH], 0);
 			vect_del(ov_box, &overlords);
 			vect_del(bul_box, &bullets);
 			printf("%zu overlord shooted\n", ov_box);
@@ -463,13 +473,22 @@ main() {
 
 gameover:
 
-	free_media_all(surfaces, levels);
+	Mix_PlayChannel(-1, sounds[SOUND_BIG_EXPLOSION], 0);
+
+	wait_for_space();
+
+	free_media_all(surfaces, levels, fonts, sounds);
 
 	SDL_DestroyWindow(window);
 	window = NULL;
 
+	Mix_FreeMusic(music);
+	Mix_CloseAudio();
+
+	TTF_Quit();
+
 	SDL_Quit();
-	Mix_Quit();
+
 
 	exit(EXIT_SUCCESS);
 }
