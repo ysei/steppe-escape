@@ -5,6 +5,7 @@ const int SCREEN_HEIGHT = 540;
 //Game Scale: 1px = 0,21559m
 //River Length: 525km = 525000m = 2435177px
 //KWS1: Rozpietosc: 9,04m Dlugosc: 7,33m(34px) Wysokosc: 2,7m
+const double PIXEL_SCALE = 0.21559;
 
 const int MAX_PATH_LEN = 100;
 
@@ -18,8 +19,8 @@ const int FRAMES_PER_SECOND = 50;
 
 const int PLANE_X_SPEED = 10;
 
-const int PLANE_START_SPEED = 5;
-const int PLANE_SPEED_MAX = 10;
+const int PLANE_START_SPEED = 3;
+const int PLANE_SPEED_MAX = 5;
 const int PLANE_SPEED_MIN = 1;
 const int PLANE_SPEED_MULTIPLAYER = 1;
 
@@ -46,10 +47,11 @@ enum Levels {
 
 enum Font {
 	FONT_INFO,
+	FONT_MENU,
 	FONT_TOTAL,
 };
-const char *Fonts[] = {"DejaVuSans.ttf"};
-const int Fonts_Sizes[] = {12};
+const char *Fonts[] = {"DejaVuSans.ttf", "badabb.ttf"};
+const int Fonts_Sizes[] = {12, 48};
 
 enum Sound {
 	SOUND_GUN,

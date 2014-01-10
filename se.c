@@ -288,6 +288,30 @@ wait_for_space() {
 	}
 }
 
+void
+redraw_menu(SDL_Surface *screen, TTF_Font *fonts[], SDL_Surface *surfaces[], SDL_Rect *screen_rect, char *texts[], size_t texts_len, size_t active_text) {
+	SDL_Color text_color = {0xFF, 0xFF, 0xFF};
+	int menu_top_margin = 220;
+	int between_margin  = 30; 
+	int menu_left_margin = 150;
+
+	SDL_BlitScaled(surfaces[SUR_START], NULL, screen, screen_rect);
+
+	for (size_t i = 0; i < texts_len; i++) {
+		SDL_Surface *text_sur;
+		if (i == active_text) {
+			TTF_SetFontOutline(fonts[FONT_MENU], 1);
+		} else {
+			TTF_SetFontOutline(fonts[FONT_MENU], 0);
+		}
+		text_sur = TTF_RenderUTF8_Blended(fonts[FONT_MENU], texts[i], text_color);
+		apply_surface(menu_left_margin, menu_top_margin, text_sur, screen, NULL);
+		menu_top_margin += text_sur->h + between_margin;
+		SDL_FreeSurface(text_sur);
+	}
+
+}
+
 int
 main() {
 	SDL_Surface *screen, *surfaces[SUR_TOTAL], *levels[LEVEL_TOTAL];
@@ -342,15 +366,58 @@ main() {
 	screen_rect.w = SCREEN_WIDTH;
 	screen_rect.h = SCREEN_HEIGHT;
 
-	SDL_BlitScaled(surfaces[SUR_START], NULL, screen, &screen_rect);
 
+
+	char *texts[] = {"Kontynuuj", "Nowa gra", "Survival", "Koniec"};
+	int active_text = 1;
+	redraw_menu(screen, fonts, surfaces, &screen_rect, texts, sizeof(texts)/sizeof(char *), active_text);
 	SDL_UpdateWindowSurface(window);
 
 	Mix_PlayMusic(music, -1);
-	//waiting to start the game
-	wait_for_space();
 
+	//waiting to start the game
+	SDL_Event e;
 	int quit = 0;
+	while (quit == 0) {
+		//Handle events on queue
+		while (SDL_PollEvent(&e) != 0) {
+			//User requests quit
+			if (e.type == SDL_QUIT) {
+				quit = 1;
+			} else if (e.type == SDL_KEYDOWN) {
+				switch (e.key.keysym.sym) {
+					case SDLK_ESCAPE:
+						goto exit;
+					break;
+					case SDLK_RETURN:
+						quit = 1;
+					break;
+					case SDLK_UP:
+						active_text--;
+						if (active_text < 0)
+							active_text = sizeof(texts)/sizeof(char *) - 1;
+
+						redraw_menu(screen, fonts, surfaces, &screen_rect, texts, sizeof(texts)/sizeof(char *), active_text);
+						SDL_UpdateWindowSurface(window);
+					break;
+					case SDLK_DOWN:
+						active_text++;
+						if (active_text > sizeof(texts)/sizeof(char *) - 1)
+							active_text = 0;
+						redraw_menu(screen, fonts, surfaces, &screen_rect, texts, sizeof(texts)/sizeof(char *), active_text);
+						SDL_UpdateWindowSurface(window);
+					break;
+				}
+			}
+		}
+	}
+	switch (active_text) {
+		case 3:
+			goto exit;
+			break;
+	}
+
+	quit = 0;
 
 	int start_ticks;
 
@@ -375,7 +442,6 @@ main() {
 
 	SDL_Rect camera = {0, 0, SCREEN_WIDTH, SCREEN_HEIGHT};
 
-	SDL_Event e;
 	size_t last_land_pos = level.boxes.size - 1;
 
 	Rect_Vect bullets;
@@ -387,11 +453,12 @@ main() {
 	int frames_to_shoot = 0;
 
 	Mix_PlayChannel(-1, sounds[SOUND_ENGINE], -1);
+	long points = 0;
+	long distance = 0;
 	while (quit == 0) {
 		//Start teh frame timer
 		start_ticks = SDL_GetTicks();
 
-		printf("%d\n", frames_to_shoot);
 		//Handle events on queue
 		while (SDL_PollEvent(&e) != 0) {
 
@@ -403,12 +470,21 @@ main() {
 			} else if (e.type == SDL_KEYDOWN) {
 				Rect bullet;
 				switch (e.key.keysym.sym) {
+					case SDLK_ESCAPE:
+						goto exit;
+					break;
 					case SDLK_SPACE:
 						if (frames_to_shoot <= 0) {
 							Mix_PlayChannel(-1, sounds[SOUND_GUN], 0);
 							bullet.w = 1;
 							bullet.h = 10;
-							bullet.x = plane.x + plane.sur->w/2;
+							bullet.x = plane.x + plane.sur->w/2 - 15;
+							bullet.y = plane.level_y;
+							vect_add(bullet, &bullets);
+
+							bullet.w = 1;
+							bullet.h = 10;
+							bullet.x = plane.x + plane.sur->w/2 + 15;
 							bullet.y = plane.level_y;
 							vect_add(bullet, &bullets);
 							frames_to_shoot = reload;
@@ -423,6 +499,9 @@ main() {
 		}
 
 		move_plane(&plane, &level);
+
+		distance += plane.speed;
+
 		set_camera(&camera, &level, &plane);
 
 		apply_surface(0, 0, level.sur, screen, &camera);
@@ -430,11 +509,15 @@ main() {
 		show_plane(&plane, screen);
 
 		for (size_t i = 0; i < bullets.size; i++) {
-			size_t true_y;
+			int true_y;
 			true_y = bullets.tab[i].y - (plane.level_y + plane.sur->h) + SCREEN_HEIGHT; 
-
-			SDL_Rect bul_rect = {bullets.tab[i].x, true_y, bullets.tab[i].w ,bullets.tab[i].h};
-			SDL_FillRect(screen, &bul_rect, SDL_MapRGB(screen->format, 0, 0, 0));
+			//re
+			if (true_y < 0) {
+				vect_del(i, &bullets);
+			} else {
+				SDL_Rect bul_rect = {bullets.tab[i].x, true_y, bullets.tab[i].w ,bullets.tab[i].h};
+				SDL_FillRect(screen, &bul_rect, SDL_MapRGB(screen->format, 0, 0, 0));
+			}
 		}
 
 		for (size_t i = 0; i < overlords.size; i++) {
@@ -442,6 +525,35 @@ main() {
 			true_y = overlords.tab[i].y - (plane.level_y + plane.sur->h) + SCREEN_HEIGHT; 
 			apply_surface(overlords.tab[i].x, true_y, surfaces[SUR_OVERLORD], screen, NULL);
 		}
+
+		//update com
+		SDL_Color text_color = {0, 0, 0};
+		int margin_bottom = 4;
+		SDL_Surface *text_sur;
+		char text[100];
+		sprintf(text, "Punkty: %ld", points);
+		text_sur = TTF_RenderUTF8_Solid(fonts[FONT_INFO], text, text_color);
+		apply_surface(0, SCREEN_HEIGHT - Fonts_Sizes[FONT_INFO] - margin_bottom, text_sur, screen, NULL);
+		SDL_FreeSurface(text_sur);
+
+
+		//should be: double km_h_speed = ((plane.speed * PIXEL_SCALE)/1000) / ((1000/FRAMES_PER_SECOND)/(1000*3600));
+		double km_h_speed = ((plane.speed * PIXEL_SCALE)/1000)*(1000*3600) / (1000/FRAMES_PER_SECOND);
+
+		sprintf(text, "Prędkość: %.f km/h", km_h_speed);
+		text_sur = TTF_RenderUTF8_Solid(fonts[FONT_INFO], text, text_color);
+		apply_surface(SCREEN_WIDTH - text_sur->w - 6, SCREEN_HEIGHT - Fonts_Sizes[FONT_INFO] - margin_bottom, text_sur, screen, NULL);
+
+		int speed_sur_w = text_sur->w;
+
+		SDL_FreeSurface(text_sur);
+
+
+		double distance_km = (distance * PIXEL_SCALE)/1000;
+		sprintf(text, "Pokonana odległość: %.2f km", distance_km);
+		text_sur = TTF_RenderUTF8_Solid(fonts[FONT_INFO], text, text_color);
+		apply_surface(SCREEN_WIDTH - speed_sur_w - text_sur->w - 25, SCREEN_HEIGHT - Fonts_Sizes[FONT_INFO] - margin_bottom, text_sur, screen, NULL);
+		SDL_FreeSurface(text_sur);
 
 		SDL_UpdateWindowSurface(window);
 
@@ -458,6 +570,7 @@ main() {
 			Mix_PlayChannel(-1, sounds[SOUND_OV_DEATH], 0);
 			vect_del(ov_box, &overlords);
 			vect_del(bul_box, &bullets);
+			points += 10;
 			printf("%zu overlord shooted\n", ov_box);
 		}
 		
@@ -477,6 +590,7 @@ gameover:
 
 	wait_for_space();
 
+exit:
 	free_media_all(surfaces, levels, fonts, sounds);
 
 	SDL_DestroyWindow(window);
