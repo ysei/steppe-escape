@@ -145,11 +145,10 @@ free_media_all(SDL_Surface *surfaces[], SDL_Surface *levels[], TTF_Font *fonts[]
 }
 
 void
-set_camera(SDL_Rect *camera, Level *level, Plane *plane) {
-	static int road = 0;
-	road += plane->speed;
+set_camera(SDL_Rect *camera, Level *level, Plane *plane, int *road_in_lv) {
+	*road_in_lv += plane->speed;
 
-	camera->y = level->sur->h - SCREEN_HEIGHT - road;
+	camera->y = level->sur->h - SCREEN_HEIGHT - *road_in_lv;
 
 	if (camera->y < 0) {
 		camera->y = 0;
@@ -293,7 +292,7 @@ wait_for_space() {
 				quit = 1;
 			} else if (e.type == SDL_KEYDOWN) {
 				switch (e.key.keysym.sym) {
-					case SDLK_SPACE:
+					case SDLK_RETURN:
 						quit = 1;
 					break;
 				}
@@ -374,10 +373,16 @@ void
 init_speeches(Speeches *speeches[]) {
 	Speeches *sp = NULL;
 
-	sp = add_speech(0, "No to do boju! Początek powinien być łatwy. Wystarczy, że nie będę zwracał na siebie uwagi i jescze dzisiaj spokojnie wylonduje w Karagandzie.", sp);
+	sp = add_speech(0, "No to do boju! Początek powinien być łatwy. Wystarczy, że nie będę zwracał na siebie uwagi i jescze dzisiaj spokojnie wylonduję w Karagandzie.", sp);
 	speeches[1] = sp;
-	sp = add_speech(0, "to drugie zdanie", sp);
-	sp = add_speech(320, "MONGO", sp);
+	sp = add_speech(0, "Martwy mnie tylko niski stan paliwa. Muszę coś z tym zrobić.", sp);
+	sp = add_speech(320, "Och, było blisko!", sp);
+
+	sp = NULL;
+	sp = add_speech(0, "Jakoś nie poznaje tego miejsca.", sp);
+	speeches[2] = sp;
+	sp = add_speech(0, "Ciekawe gdzie jestem?", sp);
+	sp = add_speech(320, "To Overlordy mogą latać!?", sp);
 
 }
 
@@ -554,279 +559,297 @@ main() {
 
 	quit = 0;
 
-	int start_ticks;
 
 	int level_nr = 1;
-
-	//loading level
-	Level level;
-	level.sur = levels[LEVEL_1];
-
-	Rect_Vect overlords;
-	load_level(&level, l1_xpm, &overlords, LEVEL_RIVER_MASK, SCREEN_WIDTH);
-	//end loading level
-
-	Plane plane;
-
-   	plane.sur = surfaces[SUR_PLANE];
-	plane.x = (SCREEN_WIDTH/2) - (plane.sur->w/2);
-	plane.level_y = level.sur->h - plane.sur->h;
-
-	plane.true_y = SCREEN_HEIGHT - plane.sur->h;
-	plane.speed = PLANE_START_SPEED;
-
-	plane.boxes.tab = NULL;
-	change_plane_boxes(&plane);
-
-
-	SDL_Rect camera = {0, 0, SCREEN_WIDTH, SCREEN_HEIGHT};
-
-	size_t last_land_pos = level.boxes.size - 1;
-
-	Rect_Vect bullets;
-	bullets.tab = NULL;
-	bullets.size = 0;
-
-	Animation *ov_anims;
-	ov_anims = emalloc(overlords.size * sizeof(Animation));
-
-	for (int i = 0; i < overlords.size; i++) {
-		init_anim(&ov_anims[i]);
-	}
 
 	//+1 becouse we don't have lv 0;
 	Speeches *speeches[LEVEL_TOTAL + 1];
 	init_speeches(speeches);
 
-	//reloading farmes
-	int reload = (1000/(THEORETICAL_RATE/60)) / FRAMES_PER_SECOND;
-	int frames_to_shoot = 0;
-
 	long points = 0;
 	long ammo = 10;
 	long distance = 0;
-	//how many pixel to come
+	//how many pixel 
 	long fuel = 8000;
 
-	int act_sur;
-
-	long next_speech;
-	char speech[300];
-	speeches[level_nr] = load_speech(speech, &next_speech, speeches[level_nr]);
-
-	//MAIN LOOP
 	Mix_PlayChannel(-1, sounds[SOUND_ENGINE], -1);
-	while (quit == 0) {
-		//Start teh frame timer
-		start_ticks = SDL_GetTicks();
+	//levels begin from 1
+	//level loop
+	while (level_nr < LEVEL_TOTAL+1) {
+		//loading level
+		Level level;
+		Rect_Vect overlords;
 
-		//Handle events on queue
-		while (SDL_PollEvent(&e) != 0) {
+		switch (level_nr) {
+			case 1:
+				level.sur = levels[LEVEL_1];
+				load_level(&level, l1_xpm, &overlords, LEVEL_RIVER_MASK, SCREEN_WIDTH);
+				//end loading level
+				break;
+			case 2:
+				level.sur = levels[LEVEL_2];
+				load_level(&level, l2_xpm, &overlords, LEVEL_RIVER_MASK, SCREEN_WIDTH);
+				//end loading level
+				break;
+		}
 
-			act_sur = handle_plane_input(&plane, &level, &e);
-			plane.sur = surfaces[act_sur];
+		Plane plane;
 
-			//User requests quit
-			if (e.type == SDL_QUIT) {
-				quit = 1;
-			} else if (e.type == SDL_KEYDOWN) {
-				Rect bullet;
-				switch (e.key.keysym.sym) {
-					case SDLK_ESCAPE:
-						goto exit;
-					break;
-					case SDLK_SPACE:
-						if (frames_to_shoot <= 0) {
-							if (ammo > 0) {
-								Mix_PlayChannel(-1, sounds[SOUND_GUN], 0);
-								bullet.w = 1;
-								bullet.h = 10;
-								bullet.x = plane.x + plane.sur->w/2 - 15;
-								bullet.y = plane.level_y;
-								vect_add(bullet, &bullets);
+		plane.sur = surfaces[SUR_PLANE];
+		plane.x = (SCREEN_WIDTH/2) - (plane.sur->w/2);
+		plane.level_y = level.sur->h - plane.sur->h;
 
-								bullet.w = 1;
-								bullet.h = 10;
-								bullet.x = plane.x + plane.sur->w/2 + 15;
-								bullet.y = plane.level_y;
-								vect_add(bullet, &bullets);
-								frames_to_shoot = reload;
-								ammo--;
-							} else {
-								Mix_PlayChannel(-1, sounds[SOUND_EMPTY_SHOOT], 0);
-							}
-						}
+		plane.true_y = SCREEN_HEIGHT - plane.sur->h;
+		plane.speed = PLANE_START_SPEED;
+
+		plane.boxes.tab = NULL;
+		change_plane_boxes(&plane);
+
+
+		SDL_Rect camera = {0, 0, SCREEN_WIDTH, SCREEN_HEIGHT};
+
+		size_t last_land_pos = level.boxes.size - 1;
+
+		Rect_Vect bullets;
+		bullets.tab = NULL;
+		bullets.size = 0;
+
+		Animation *ov_anims;
+		ov_anims = emalloc(overlords.size * sizeof(Animation));
+
+		for (int i = 0; i < overlords.size; i++) {
+			init_anim(&ov_anims[i]);
+		}
+
+		//reloading farmes
+		int reload = (1000/(THEORETICAL_RATE/60)) / FRAMES_PER_SECOND;
+		int frames_to_shoot = 0;
+
+
+		int act_sur;
+
+		long next_speech;
+		char speech[300];
+		speeches[level_nr] = load_speech(speech, &next_speech, speeches[level_nr]);
+
+		int start_ticks;
+		int road_in_lv = 0;
+		//MAIN LOOP
+		while (quit == 0) {
+			//Start teh frame timer
+			start_ticks = SDL_GetTicks();
+
+			//Handle events on queue
+			while (SDL_PollEvent(&e) != 0) {
+
+				act_sur = handle_plane_input(&plane, &level, &e);
+				plane.sur = surfaces[act_sur];
+
+				//User requests quit
+				if (e.type == SDL_QUIT) {
+					quit = 1;
+				} else if (e.type == SDL_KEYDOWN) {
+					Rect bullet;
+					switch (e.key.keysym.sym) {
+						case SDLK_ESCAPE:
+							goto exit;
 						break;
+						case SDLK_SPACE:
+							if (frames_to_shoot <= 0) {
+								if (ammo > 0) {
+									Mix_PlayChannel(-1, sounds[SOUND_GUN], 0);
+									bullet.w = 1;
+									bullet.h = 10;
+									bullet.x = plane.x + plane.sur->w/2 - 15;
+									bullet.y = plane.level_y;
+									vect_add(bullet, &bullets);
+
+									bullet.w = 1;
+									bullet.h = 10;
+									bullet.x = plane.x + plane.sur->w/2 + 15;
+									bullet.y = plane.level_y;
+									vect_add(bullet, &bullets);
+									frames_to_shoot = reload;
+									ammo--;
+								} else {
+									Mix_PlayChannel(-1, sounds[SOUND_EMPTY_SHOOT], 0);
+								}
+							}
+							break;
+					}
 				}
 			}
-		}
-		//move bullets
-		for (size_t i = 0; i < bullets.size; i++) {
-			bullets.tab[i].y -= BULLET_SPEED;
-		}
-
-		move_plane(&plane, &level);
-
-		distance += plane.speed;
-		fuel -= plane.speed;
-
-		set_camera(&camera, &level, &plane);
-
-		apply_surface(0, 0, level.sur, screen, &camera);
-
-		show_plane(&plane, screen);
-
-		//show bullets
-		for (size_t i = 0; i < bullets.size; i++) {
-			int true_y;
-			if (plane.level_y != plane.true_y) {
-				true_y = bullets.tab[i].y - (plane.level_y + plane.sur->h) + SCREEN_HEIGHT; 
-			} else {
-				true_y = bullets.tab[i].y;
+			//move bullets
+			for (size_t i = 0; i < bullets.size; i++) {
+				bullets.tab[i].y -= BULLET_SPEED;
 			}
 
-			if (true_y < 0) {
-				vect_del(i, &bullets);
-			} else {
-				SDL_Rect bul_rect = {bullets.tab[i].x, true_y, bullets.tab[i].w ,bullets.tab[i].h};
-				SDL_FillRect(screen, &bul_rect, SDL_MapRGB(screen->format, 0, 0, 0));
-			}
-		}
+			move_plane(&plane, &level);
 
-		for (size_t i = 0; i < overlords.size; i++) {
-			size_t true_y;
-			true_y = overlords.tab[i].y - (plane.level_y + plane.sur->h) + SCREEN_HEIGHT; 
-			//if movelord
-			if  (overlords.tab[i].to != 0 ) {
-				overlords.tab[i].x += ov_anims[i].dir * OVERLORD_SPEED;
-				if (overlords.tab[i].x > overlords.tab[i].to) {
-					overlords.tab[i].x = overlords.tab[i].to;
-					ov_anims[i].dir = -1;
-				} else if (overlords.tab[i].x < overlords.tab[i].from) {
-					overlords.tab[i].x = overlords.tab[i].from;
-					ov_anims[i].dir = 1;
+			distance += plane.speed;
+			fuel -= plane.speed;
+
+			set_camera(&camera, &level, &plane, &road_in_lv);
+
+			apply_surface(0, 0, level.sur, screen, &camera);
+
+			show_plane(&plane, screen);
+
+			//show bullets
+			for (size_t i = 0; i < bullets.size; i++) {
+				int true_y;
+				if (plane.level_y != plane.true_y) {
+					true_y = bullets.tab[i].y - (plane.level_y + plane.sur->h) + SCREEN_HEIGHT; 
+				} else {
+					true_y = bullets.tab[i].y;
+				}
+
+				if (true_y < 0) {
+					vect_del(i, &bullets);
+				} else {
+					SDL_Rect bul_rect = {bullets.tab[i].x, true_y, bullets.tab[i].w ,bullets.tab[i].h};
+					SDL_FillRect(screen, &bul_rect, SDL_MapRGB(screen->format, 0, 0, 0));
 				}
 			}
-			SDL_Surface *dir_sur;
-			if (ov_anims[i].dir == 1) {
-				dir_sur = surfaces[SUR_OVERLORD];
-			} else {
-				dir_sur = surfaces[SUR_OVERLORD_R];
+
+			for (size_t i = 0; i < overlords.size; i++) {
+				size_t true_y;
+				true_y = overlords.tab[i].y - (plane.level_y + plane.sur->h) + SCREEN_HEIGHT; 
+				//if movelord
+				if  (overlords.tab[i].to != 0 ) {
+					overlords.tab[i].x += ov_anims[i].dir * OVERLORD_SPEED;
+					if (overlords.tab[i].x > overlords.tab[i].to) {
+						overlords.tab[i].x = overlords.tab[i].to;
+						ov_anims[i].dir = -1;
+					} else if (overlords.tab[i].x < overlords.tab[i].from) {
+						overlords.tab[i].x = overlords.tab[i].from;
+						ov_anims[i].dir = 1;
+					}
+				}
+				SDL_Surface *dir_sur;
+				if (ov_anims[i].dir == 1) {
+					dir_sur = surfaces[SUR_OVERLORD];
+				} else {
+					dir_sur = surfaces[SUR_OVERLORD_R];
+				}
+				show_anim(overlords.tab[i].x, true_y, dir_sur, screen, &ov_anims[i]);
+
 			}
-			show_anim(overlords.tab[i].x, true_y, dir_sur, screen, &ov_anims[i]);
 
-		}
+			//update com
+			SDL_Color text_color = {0, 0, 0};
+			SDL_Color text_high = {0, 0xFF, 0};
+			SDL_Color text_medium = {0, 0xFF, 0xFF};
+			SDL_Color text_low = {0xFF, 0, 0};
 
-		//update com
-		SDL_Color text_color = {0, 0, 0};
-		SDL_Color text_high = {0, 0xFF, 0};
-		SDL_Color text_medium = {0, 0xFF, 0xFF};
-		SDL_Color text_low = {0xFF, 0, 0};
+			int margin_bottom = 4;
+			SDL_Surface *text_sur;
+			char text[100];
+			int r_sur_w = 0;
 
-		int margin_bottom = 4;
-		SDL_Surface *text_sur;
-		char text[100];
-		int r_sur_w = 0;
+			sprintf(text, "Punkty: %ld", points);
+			text_sur = TTF_RenderUTF8_Solid(fonts[FONT_INFO], text, text_color);
+			apply_surface(0, SCREEN_HEIGHT - Fonts_Sizes[FONT_INFO] - margin_bottom, text_sur, screen, NULL);
+			r_sur_w += text_sur->w + 25;
+			SDL_FreeSurface(text_sur);
 
-		sprintf(text, "Punkty: %ld", points);
-		text_sur = TTF_RenderUTF8_Solid(fonts[FONT_INFO], text, text_color);
-		apply_surface(0, SCREEN_HEIGHT - Fonts_Sizes[FONT_INFO] - margin_bottom, text_sur, screen, NULL);
-		r_sur_w += text_sur->w + 25;
-		SDL_FreeSurface(text_sur);
-
-		sprintf(text, "Amunicja: %ld", ammo);
-		text_sur = TTF_RenderUTF8_Solid(fonts[FONT_INFO], text, text_color);
-		apply_surface(r_sur_w, SCREEN_HEIGHT - Fonts_Sizes[FONT_INFO] - margin_bottom, text_sur, screen, NULL);
-		r_sur_w += text_sur->w + 25;
-		SDL_FreeSurface(text_sur);
+			sprintf(text, "Amunicja: %ld", ammo);
+			text_sur = TTF_RenderUTF8_Solid(fonts[FONT_INFO], text, text_color);
+			apply_surface(r_sur_w, SCREEN_HEIGHT - Fonts_Sizes[FONT_INFO] - margin_bottom, text_sur, screen, NULL);
+			r_sur_w += text_sur->w + 25;
+			SDL_FreeSurface(text_sur);
 
 
-		sprintf(text, "Paliwo: ");
-		text_sur = TTF_RenderUTF8_Solid(fonts[FONT_INFO], text, text_color);
-		apply_surface(r_sur_w, SCREEN_HEIGHT - Fonts_Sizes[FONT_INFO] - margin_bottom, text_sur, screen, NULL);
-		r_sur_w += text_sur->w;
-		SDL_FreeSurface(text_sur);
+			sprintf(text, "Paliwo: ");
+			text_sur = TTF_RenderUTF8_Solid(fonts[FONT_INFO], text, text_color);
+			apply_surface(r_sur_w, SCREEN_HEIGHT - Fonts_Sizes[FONT_INFO] - margin_bottom, text_sur, screen, NULL);
+			r_sur_w += text_sur->w;
+			SDL_FreeSurface(text_sur);
 
-		SDL_Color color;
-		int fuel_percent = (fuel*100)/MAX_FUEL;
-		if (fuel_percent > 60)  {
-			color = text_high;
-		} else if (fuel_percent > 30) {
-			color = text_medium;
-		} else {
-			color = text_low;
-		}
-		sprintf(text, "%d%%", fuel_percent);
-		text_sur = TTF_RenderUTF8_Solid(fonts[FONT_INFO], text, color);
-		apply_surface(r_sur_w, SCREEN_HEIGHT - Fonts_Sizes[FONT_INFO] - margin_bottom, text_sur, screen, NULL);
-		SDL_FreeSurface(text_sur);
-
-
-		//should be: double km_h_speed = ((plane.speed * PIXEL_SCALE)/1000) / ((1000/FRAMES_PER_SECOND)/(1000*3600));
-		double km_h_speed = ((plane.speed * PIXEL_SCALE)/1000)*(1000*3600) / (1000/FRAMES_PER_SECOND);
-
-		sprintf(text, "Prędkość: %.f km/h", km_h_speed);
-		text_sur = TTF_RenderUTF8_Solid(fonts[FONT_INFO], text, text_color);
-		apply_surface(SCREEN_WIDTH - text_sur->w - 6, SCREEN_HEIGHT - Fonts_Sizes[FONT_INFO] - margin_bottom, text_sur, screen, NULL);
-
-		int speed_sur_w = text_sur->w;
-
-		SDL_FreeSurface(text_sur);
+			SDL_Color color;
+			int fuel_percent = (fuel*100)/MAX_FUEL;
+			if (fuel_percent > 60)  {
+				color = text_high;
+			} else if (fuel_percent > 30) {
+				color = text_medium;
+			} else {
+				color = text_low;
+			}
+			sprintf(text, "%d%%", fuel_percent);
+			text_sur = TTF_RenderUTF8_Solid(fonts[FONT_INFO], text, color);
+			apply_surface(r_sur_w, SCREEN_HEIGHT - Fonts_Sizes[FONT_INFO] - margin_bottom, text_sur, screen, NULL);
+			SDL_FreeSurface(text_sur);
 
 
-		double distance_km = (distance * PIXEL_SCALE)/1000;
-		sprintf(text, "Pokonana odległość: %.2f km", distance_km);
-		text_sur = TTF_RenderUTF8_Solid(fonts[FONT_INFO], text, text_color);
-		apply_surface(SCREEN_WIDTH - speed_sur_w - text_sur->w - 25, SCREEN_HEIGHT - Fonts_Sizes[FONT_INFO] - margin_bottom, text_sur, screen, NULL);
-		SDL_FreeSurface(text_sur);
+			//should be: double km_h_speed = ((plane.speed * PIXEL_SCALE)/1000) / ((1000/FRAMES_PER_SECOND)/(1000*3600));
+			double km_h_speed = ((plane.speed * PIXEL_SCALE)/1000)*(1000*3600) / (1000/FRAMES_PER_SECOND);
+
+			sprintf(text, "Prędkość: %.f km/h", km_h_speed);
+			text_sur = TTF_RenderUTF8_Solid(fonts[FONT_INFO], text, text_color);
+			apply_surface(SCREEN_WIDTH - text_sur->w - 6, SCREEN_HEIGHT - Fonts_Sizes[FONT_INFO] - margin_bottom, text_sur, screen, NULL);
+
+			int speed_sur_w = text_sur->w;
+
+			SDL_FreeSurface(text_sur);
+
+
+			double distance_km = (distance * PIXEL_SCALE)/1000;
+			sprintf(text, "Pokonana odległość: %.2f km", distance_km);
+			text_sur = TTF_RenderUTF8_Solid(fonts[FONT_INFO], text, text_color);
+			apply_surface(SCREEN_WIDTH - speed_sur_w - text_sur->w - 25, SCREEN_HEIGHT - Fonts_Sizes[FONT_INFO] - margin_bottom, text_sur, screen, NULL);
+			SDL_FreeSurface(text_sur);
 
 
 
-		//printf("%d == %ld\n", plane.level_y + plane.sur->h, (level.sur->h - next_speech));
-		while (plane.level_y <= (level.sur->h - next_speech) && next_speech != -1) {
-			pilot_say(speech, fonts, surfaces, screen);
-			speeches[level_nr] = load_speech(speech, &next_speech, speeches[level_nr]);
+			//printf("%d == %ld\n", plane.level_y + plane.sur->h, (level.sur->h - next_speech));
+			while (plane.level_y <= (level.sur->h - next_speech) && next_speech != -1) {
+				pilot_say(speech, fonts, surfaces, screen);
+				speeches[level_nr] = load_speech(speech, &next_speech, speeches[level_nr]);
+				SDL_UpdateWindowSurface(window);
+				wait_for_space();
+			}
 			SDL_UpdateWindowSurface(window);
-			wait_for_space();
-		}
-		SDL_UpdateWindowSurface(window);
 
-		if (fuel <= 0) {
-			goto gameover;
-		}
+			if (fuel <= 0) {
+				goto gameover;
+			}
 
-		if (land_collision(&plane, &level, &last_land_pos)) {
-			goto gameover;
-		}
+			if (land_collision(&plane, &level, &last_land_pos)) {
+				goto gameover;
+			}
 
-		if (collision_detect(&plane.boxes, &overlords, NULL, NULL)) {
-			goto gameover;
-		}
+			if (collision_detect(&plane.boxes, &overlords, NULL, NULL)) {
+				goto gameover;
+			}
 
-		size_t ov_box, bul_box;
-		if (collision_detect(&overlords, &bullets, &ov_box, &bul_box)) {
-			Mix_PlayChannel(-1, sounds[SOUND_OV_DEATH], 0);
-			vect_del(ov_box, &overlords);
-			vect_del(bul_box, &bullets);
-			points += 10;
-			printf("%zu overlord shooted\n", ov_box);
-		}
-		
+			size_t ov_box, bul_box;
+			if (collision_detect(&overlords, &bullets, &ov_box, &bul_box)) {
+				Mix_PlayChannel(-1, sounds[SOUND_OV_DEATH], 0);
+				vect_del(ov_box, &overlords);
+				vect_del(bul_box, &bullets);
+				points += 10;
+				printf("%zu overlord shooted\n", ov_box);
+			}
+			
 
 
-		int ticks = SDL_GetTicks() - start_ticks;
-		if (ticks < 1000/FRAMES_PER_SECOND) {
-			SDL_Delay((1000/FRAMES_PER_SECOND) - ticks);
-		}
-		if (frames_to_shoot > 0)
-			frames_to_shoot--;
+			int ticks = SDL_GetTicks() - start_ticks;
+			if (ticks < 1000/FRAMES_PER_SECOND) {
+				SDL_Delay((1000/FRAMES_PER_SECOND) - ticks);
+			}
+			if (frames_to_shoot > 0)
+				frames_to_shoot--;
 
-		//check if level over
-		if (plane.level_y + plane.sur->h <= 0) {
-			printf("!! LEVEL OVER !!");
-			break;
-		}
-	}
+			//check if level over
+			if (plane.level_y + plane.sur->h <= 0) {
+				printf("!! LEVEL OVER !!");
+				level_nr++;
+				//cleaning
+				SDL_FreeSurface(level.sur);
+				break;
+			}
+		}//end game loop
+	}//end level loop
 
 gameover:
 
