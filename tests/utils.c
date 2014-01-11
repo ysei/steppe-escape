@@ -22,6 +22,51 @@ emalloc(size_t size) {
 	}
 	return p;
 }
+int
+ext(const char *file) {
+	int ext_begin = 0, j = 0;
+	char ext[10];
+	for (int i = 0; i < strlen(file); i++) {
+		if (ext_begin) {
+			ext[j++] = file[i];
+		} else if (file[i] == '.')
+			ext_begin = 1;
+	}
+	ext[j] = '\0';
+	if (strcmp("png", ext) == 0)
+		return EXT_PNG;
+	else if (strcmp("bmp", ext) == 0)
+		return EXT_BMP;
+	else
+		return -1;
+}
+
+void
+get_last_word(char *source, char *dest) {
+char word[100] = "";
+int j = 0;
+int i;
+for (i = 0; i < strlen(source); i++) {
+	if (source[i] == ' ') {
+		word[0] = ' ';
+		j = 1;
+	} else {
+		word[j++] = source[i];
+	}
+}
+word[j] = '\0';
+source[i - j] = '\0';
+strcpy(dest, word);
+}
+void
+strbefore(char *pice, char *main) {
+	int p_len;
+	p_len = strlen(pice);
+	memmove(main + p_len, main, (strlen(main) + 1)*sizeof(char));
+	for (int i = 0; i < p_len; i++) {
+		main[i] = pice[i];
+	}
+}
 
 void
 vect_add(Rect rect, Rect_Vect *vect) {

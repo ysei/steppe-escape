@@ -10,11 +10,18 @@
 
 int
 part_of_rect(char ch, char *xpm[], size_t i, size_t j) {
+
+	if (i == 0 || (i > 0 && xpm[i-1][j] != ch)) {
+		if (j == strlen(xpm[i])-1 || xpm[i][j+1] != ch) {
+			return 1;
+		}
+	}
+
 	if (j > 0 && xpm[i][j-1] == ch) {
-		return 1;
+		return 2;
 	} else {
 		if (i > 0 && xpm[i-1][j] == ch) {
-			return 1;
+			return 2;
 		}
 		return 0;
 	}
@@ -31,6 +38,7 @@ load_level(Level *level, char *xpm[], Rect_Vect *overlords, RGB_Color color, siz
 	}
 	char land_ch = '\0';
 	char overlord_ch = '\0';
+	char movelord_ch = '\0';
 	for (int i = 1; i <= colors; i++) {
 		//I assume here that colors are in format: #XXXXXX
 		char ch, code[8];
@@ -39,6 +47,8 @@ load_level(Level *level, char *xpm[], Rect_Vect *overlords, RGB_Color color, siz
 			land_ch = ch;
 		} else if (strcmp(code, "#FF0000") == 0){
 			overlord_ch = ch;
+		} else if (strcmp(code, "#FFFF00") == 0){
+			movelord_ch = ch;
 		}
 	}
 	if (land_ch == '\0') {
@@ -51,6 +61,7 @@ load_level(Level *level, char *xpm[], Rect_Vect *overlords, RGB_Color color, siz
 	overlords->size = 0;
 
 	size_t lv_start_line = colors + 1;
+	int movelord_start = -1;
 	for (size_t i = lv_start_line; i < height + lv_start_line; i++) {
 
 		size_t w = 0, start_x = 0;
@@ -75,8 +86,27 @@ load_level(Level *level, char *xpm[], Rect_Vect *overlords, RGB_Color color, siz
 					overlord.y = i - lv_start_line + 5;
 					overlord.w = 38;
 					overlord.h = 38;
+					overlord.from = overlord.to = 0;
 					vect_add(overlord, overlords);
 					printf("overlord: %zu, %zu\n", overlord.x, overlord.y);
+				} else if (xpm[i][j] == movelord_ch) {
+					int part = part_of_rect(movelord_ch, xpm, i, j);
+
+					if (part == 0) {
+						movelord_start = j;
+					//end of the first line of rentangle
+					} else if (part == 1) {
+						Rect overlord;
+						overlord.x = movelord_start + 5;
+						overlord.y = i - lv_start_line + 5;
+						overlord.w = 38;
+						overlord.h = 38;
+
+						overlord.from = overlord.x;
+						overlord.to = j - overlord.w;
+						vect_add(overlord, overlords);
+						printf("movelord: x: %zu, y: %zu start: %d, end: %d\n", overlord.x, overlord.y, overlord.from, overlord.to);
+					}
 				}
 			}
 		}

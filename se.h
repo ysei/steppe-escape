@@ -4,3 +4,4 @@ struct Plane {
 	SDL_Surface *sur;
 	Rect_Vect boxes;
 };
+

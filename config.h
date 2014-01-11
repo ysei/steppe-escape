@@ -28,6 +28,10 @@ const int BULLET_SPEED = 20;
 //Mustafar LK Theorotical Rate: 250 (shoots/min) 
 const int THEORETICAL_RATE = 250;
 
+const int OVERLORD_SPEED = 1;
+
+const int MAX_FUEL = 30000;
+
 const char FONT_PATH[] = "fonts";
 
 const char SOUND_PATH[] = "sounds";
@@ -36,9 +40,13 @@ enum Surfaces {
 	SUR_START,
 	SUR_PLANE,
 	SUR_OVERLORD,
+	SUR_OVERLORD_R,
+	SUR_PILOT,
+	SUR_PLANE_L,
+	SUR_PLANE_R,
 	SUR_TOTAL,
 };
-const char *Images[] = {"start.bmp", "kws1.bmp", "overlord.bmp"};
+const char *Images[] = {"start.bmp", "kws1.bmp", "overlord.bmp", "overlord_r.bmp", "pilot.png", "kws1_l.bmp", "kws1_r.bmp"};
 
 enum Levels {
 	LEVEL_1,
@@ -48,16 +56,18 @@ enum Levels {
 enum Font {
 	FONT_INFO,
 	FONT_MENU,
+	FONT_PILOT_SAY,
 	FONT_TOTAL,
 };
-const char *Fonts[] = {"DejaVuSans.ttf", "badabb.ttf"};
-const int Fonts_Sizes[] = {12, 48};
+const char *Fonts[] = {"DejaVuSans.ttf", "badabb.ttf", "DejaVuSans.ttf"};
+const int Fonts_Sizes[] = {12, 48, 14};
 
 enum Sound {
 	SOUND_GUN,
 	SOUND_OV_DEATH,
 	SOUND_ENGINE,
 	SOUND_BIG_EXPLOSION,
+	SOUND_EMPTY_SHOOT,
 	SOUND_TOTAL,
 };
-const char *Sounds[] = {"gun_single.ogg", "ov_death.ogg", "machine1.ogg", "big_explosion.ogg"};
+const char *Sounds[] = {"gun_single.ogg", "ov_death.ogg", "machine1.ogg", "big_explosion.ogg", "empty_shoot.ogg"};

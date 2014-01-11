@@ -34,5 +34,21 @@ main() {
 	vect_clean(&rects);
 	vect_print(&rects);
 
+	printf("Last word test:\n");
+	char line[] = "No to do boju! Początek powinien być łatwy. Wystarczy, że nie będę zwracał na siebie uwagi i jescze dzisiaj spokojnie wylonduje w Karagandzie.";
+	char word[100];
+	get_last_word(line, word);
+	printf("Last word: '%s'. String: '%s'\n", word, line);
+	get_last_word(line, word);
+	printf("Last word: '%s'. String: '%s'\n", word, line);
+	get_last_word(line, word);
+	printf("Last word: '%s'. String: '%s'\n", word, line);
+
+	printf("Test strbefore.\n");
+	char str[] = " wielka!";
+	char w[] = "Mongolia";
+	strbefore(w, str);
+	printf("'%s'", str);
+
 	return 0;
 }
