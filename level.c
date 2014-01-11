@@ -28,7 +28,7 @@ part_of_rect(char ch, char *xpm[], size_t i, size_t j) {
 }
 
 void
-load_level(Level *level, char *xpm[], Rect_Vect *overlords, RGB_Color color, size_t screen_width) {
+load_level(Level *level, char *xpm[], Rect_Vect *overlords, Rect_Vect *fuels, RGB_Color color, size_t screen_width) {
 	size_t width, height, colors, chars_on_px;
 	sscanf(xpm[0], "%zu %zu %zu %zu", &width, &height, &colors, &chars_on_px);
 	if (width != screen_width) {
@@ -39,16 +39,21 @@ load_level(Level *level, char *xpm[], Rect_Vect *overlords, RGB_Color color, siz
 	char land_ch = '\0';
 	char overlord_ch = '\0';
 	char movelord_ch = '\0';
+	char fuel_ch = '\0';
+
 	for (int i = 1; i <= colors; i++) {
 		//I assume here that colors are in format: #XXXXXX
 		char ch, code[8];
 		sscanf(xpm[i], "%1c %*c %s", &ch, code);
+		printf("%d. color code: %s\n", i, code);
 		if (strcmp(code, "#000000") == 0) {
 			land_ch = ch;
-		} else if (strcmp(code, "#FF0000") == 0){
+		} else if (strcmp(code, "#FF0000") == 0) {
 			overlord_ch = ch;
-		} else if (strcmp(code, "#FFFF00") == 0){
+		} else if (strcmp(code, "#FFFF00") == 0) {
 			movelord_ch = ch;
+		} else if (strcmp(code, "#00FF00") == 0) {
+			fuel_ch = ch;
 		}
 	}
 	if (land_ch == '\0') {
@@ -59,6 +64,11 @@ load_level(Level *level, char *xpm[], Rect_Vect *overlords, RGB_Color color, siz
 
 	overlords->tab = NULL;
 	overlords->size = 0;
+
+	fuels->tab = NULL;
+	fuels->size = 0;
+
+	printf("fuel_ch: %c\n", fuel_ch);
 
 	size_t lv_start_line = colors + 1;
 	int movelord_start = -1;
@@ -89,6 +99,15 @@ load_level(Level *level, char *xpm[], Rect_Vect *overlords, RGB_Color color, siz
 					overlord.from = overlord.to = 0;
 					vect_add(overlord, overlords);
 					printf("overlord: %zu, %zu\n", overlord.x, overlord.y);
+				} else if (xpm[i][j] == fuel_ch && !part_of_rect(fuel_ch, xpm, i, j)) {
+					Rect fuel;
+					fuel.x = j;
+					fuel.y = i - lv_start_line;
+					fuel.w = 96;
+					fuel.h = 48;
+					fuel.from = fuel.to = 0;
+					vect_add(fuel, fuels);
+					printf("fuel: %zu, %zu\n", fuel.x, fuel.y);
 				} else if (xpm[i][j] == movelord_ch) {
 					int part = part_of_rect(movelord_ch, xpm, i, j);
 

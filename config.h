@@ -31,6 +31,7 @@ const int THEORETICAL_RATE = 250;
 const int OVERLORD_SPEED = 1;
 
 const int MAX_FUEL = 30000;
+const int FUEL_LOADING_SPEED = 300;
 
 const char FONT_PATH[] = "fonts";
 
@@ -44,9 +45,10 @@ enum Surfaces {
 	SUR_PILOT,
 	SUR_PLANE_L,
 	SUR_PLANE_R,
+	SUR_FUEL,
 	SUR_TOTAL,
 };
-const char *Images[] = {"start.bmp", "kws1.bmp", "overlord.bmp", "overlord_r.bmp", "pilot.png", "kws1_l.bmp", "kws1_r.bmp"};
+const char *Images[] = {"start.bmp", "kws1.bmp", "overlord.bmp", "overlord_r.bmp", "pilot.png", "kws1_l.bmp", "kws1_r.bmp", "fuel.png"};
 
 const size_t LEVEL_MAX_HEIGHT = 36000;
 enum Levels {
@@ -76,6 +78,9 @@ enum Sound {
 	SOUND_ENGINE,
 	SOUND_BIG_EXPLOSION,
 	SOUND_EMPTY_SHOOT,
+	SOUND_FUEL_EXPLOSION,
+	SOUND_BLUP,
+	SOUND_GAME_OVER,
 	SOUND_TOTAL,
 };
-const char *Sounds[] = {"gun_single.ogg", "ov_death.ogg", "machine1.ogg", "big_explosion.ogg", "empty_shoot.ogg"};
+const char *Sounds[] = {"gun_single.ogg", "ov_death.ogg", "machine1.ogg", "big_explosion.ogg", "empty_shoot.ogg", "fuel_explosion.ogg", "blup.ogg", "game_over.ogg"};

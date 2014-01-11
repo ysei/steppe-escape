@@ -383,6 +383,8 @@ init_speeches(Speeches *speeches[]) {
 	speeches[2] = sp;
 	sp = add_speech(0, "Ciekawe gdzie jestem?", sp);
 	sp = add_speech(320, "To Overlordy mogą latać!?", sp);
+	sp = add_speech(640, "Benzyna. Ciekawe co tu robi?!", sp);
+	sp = add_speech(640, "Być może to jakiś przechwycony kazachski okręt! Muszę to sprawdzić.", sp);
 
 }
 
@@ -445,6 +447,16 @@ pilot_say(char *text, TTF_Font *fonts[], SDL_Surface *surfaces[], SDL_Surface *s
 		apply_surface(10, SCREEN_HEIGHT - pilot->h, pilot, screen, NULL);
 }
 
+void
+game_over(long points) {
+	Mix_Music *music;
+	if ((music = Mix_LoadMUS("sounds/game_over.ogg")) == NULL) {
+	     error("Mix_LoadMUS: %s\n", Mix_GetError());
+	}
+	Mix_PlayMusic(music, -1);
+	wait_for_space();
+}
+
 int
 main() {
 	SDL_Surface *screen, *surfaces[SUR_TOTAL], *levels[LEVEL_TOTAL];
@@ -496,6 +508,7 @@ main() {
 
 	load_media_all(surfaces, levels, fonts, sounds, screen);
 
+menu:
 	if ((music = Mix_LoadMUS("sounds/Betty_Roche-Trouble_Trouble.ogg")) == NULL) {
 	     error("Mix_LoadMUS: %s\n", Mix_GetError());
 	}
@@ -552,7 +565,7 @@ main() {
 		}
 	}
 	switch (active_text) {
-		case 3:
+		case 2:
 			goto exit;
 			break;
 	}
@@ -571,6 +584,7 @@ main() {
 	long distance = 0;
 	//how many pixel 
 	long fuel = 8000;
+	long chanses = 3;
 
 	Mix_PlayChannel(-1, sounds[SOUND_ENGINE], -1);
 	//levels begin from 1
@@ -579,16 +593,17 @@ main() {
 		//loading level
 		Level level;
 		Rect_Vect overlords;
+		Rect_Vect fuels;
 
 		switch (level_nr) {
 			case 1:
 				level.sur = levels[LEVEL_1];
-				load_level(&level, l1_xpm, &overlords, LEVEL_RIVER_MASK, SCREEN_WIDTH);
+				load_level(&level, l1_xpm, &overlords, &fuels, LEVEL_RIVER_MASK, SCREEN_WIDTH);
 				//end loading level
 				break;
 			case 2:
 				level.sur = levels[LEVEL_2];
-				load_level(&level, l2_xpm, &overlords, LEVEL_RIVER_MASK, SCREEN_WIDTH);
+				load_level(&level, l2_xpm, &overlords, &fuels, LEVEL_RIVER_MASK, SCREEN_WIDTH);
 				//end loading level
 				break;
 		}
@@ -634,6 +649,7 @@ main() {
 
 		int start_ticks;
 		int road_in_lv = 0;
+		int collision = 0;
 		//MAIN LOOP
 		while (quit == 0) {
 			//Start teh frame timer
@@ -693,6 +709,30 @@ main() {
 
 			apply_surface(0, 0, level.sur, screen, &camera);
 
+			//show fuel
+			for (size_t i = 0; i < fuels.size; i++) {
+				size_t true_y;
+				true_y = fuels.tab[i].y - (plane.level_y + plane.sur->h) + SCREEN_HEIGHT; 
+
+				apply_surface(fuels.tab[i].x, true_y, surfaces[SUR_FUEL], screen, NULL);
+			}
+			if (collision_detect(&plane.boxes, &fuels, NULL, NULL)) {
+				fuel += FUEL_LOADING_SPEED;
+				Mix_PlayChannel(-1, sounds[SOUND_BLUP], 0);
+				if (fuel >= MAX_FUEL) {
+					fuel += MAX_FUEL;
+				}
+			}
+
+			size_t fuel_box, bul_ful_box;
+			if (collision_detect(&fuels, &bullets, &fuel_box, &bul_ful_box)) {
+				Mix_PlayChannel(-1, sounds[SOUND_FUEL_EXPLOSION], 0);
+				vect_del(fuel_box, &fuels);
+				vect_del(bul_ful_box, &bullets);
+				points += 10;
+				printf("%zu fuel shooted\n", fuel_box);
+			}
+
 			show_plane(&plane, screen);
 
 			//show bullets
@@ -735,6 +775,7 @@ main() {
 				show_anim(overlords.tab[i].x, true_y, dir_sur, screen, &ov_anims[i]);
 
 			}
+
 
 			//update com
 			SDL_Color text_color = {0, 0, 0};
@@ -781,14 +822,15 @@ main() {
 			SDL_FreeSurface(text_sur);
 
 
+			int speed_sur_w = 0;
 			//should be: double km_h_speed = ((plane.speed * PIXEL_SCALE)/1000) / ((1000/FRAMES_PER_SECOND)/(1000*3600));
 			double km_h_speed = ((plane.speed * PIXEL_SCALE)/1000)*(1000*3600) / (1000/FRAMES_PER_SECOND);
 
 			sprintf(text, "Prędkość: %.f km/h", km_h_speed);
 			text_sur = TTF_RenderUTF8_Solid(fonts[FONT_INFO], text, text_color);
 			apply_surface(SCREEN_WIDTH - text_sur->w - 6, SCREEN_HEIGHT - Fonts_Sizes[FONT_INFO] - margin_bottom, text_sur, screen, NULL);
+			speed_sur_w += text_sur->w + 25;
 
-			int speed_sur_w = text_sur->w;
 
 			SDL_FreeSurface(text_sur);
 
@@ -796,7 +838,14 @@ main() {
 			double distance_km = (distance * PIXEL_SCALE)/1000;
 			sprintf(text, "Pokonana odległość: %.2f km", distance_km);
 			text_sur = TTF_RenderUTF8_Solid(fonts[FONT_INFO], text, text_color);
-			apply_surface(SCREEN_WIDTH - speed_sur_w - text_sur->w - 25, SCREEN_HEIGHT - Fonts_Sizes[FONT_INFO] - margin_bottom, text_sur, screen, NULL);
+			apply_surface(SCREEN_WIDTH - speed_sur_w - text_sur->w, SCREEN_HEIGHT - Fonts_Sizes[FONT_INFO] - margin_bottom, text_sur, screen, NULL);
+			speed_sur_w += text_sur->w + 25;
+			SDL_FreeSurface(text_sur);
+
+			sprintf(text, "Pozostałe szanse: %ld", chanses);
+			text_sur = TTF_RenderUTF8_Solid(fonts[FONT_INFO], text, text_color);
+			apply_surface(SCREEN_WIDTH - speed_sur_w - text_sur->w, SCREEN_HEIGHT - Fonts_Sizes[FONT_INFO] - margin_bottom, text_sur, screen, NULL);
+			speed_sur_w += text_sur->w;
 			SDL_FreeSurface(text_sur);
 
 
@@ -811,15 +860,29 @@ main() {
 			SDL_UpdateWindowSurface(window);
 
 			if (fuel <= 0) {
-				goto gameover;
+				collision = 1;
 			}
 
 			if (land_collision(&plane, &level, &last_land_pos)) {
-				goto gameover;
+				collision = 1;
 			}
 
 			if (collision_detect(&plane.boxes, &overlords, NULL, NULL)) {
-				goto gameover;
+				collision = 1;
+			}
+
+			if (collision == 1) {
+				chanses -= 1;
+				Mix_PlayChannel(-1, sounds[SOUND_BIG_EXPLOSION], 0);
+
+				if (chanses < 0) {
+					Mix_HaltChannel(-1);
+					game_over(points);
+					goto menu;
+				} else {
+					wait_for_space();
+					break;
+				}
 			}
 
 			size_t ov_box, bul_box;
@@ -850,12 +913,6 @@ main() {
 			}
 		}//end game loop
 	}//end level loop
-
-gameover:
-
-	Mix_PlayChannel(-1, sounds[SOUND_BIG_EXPLOSION], 0);
-
-	wait_for_space();
 
 exit:
 	free_media_all(surfaces, levels, fonts, sounds);
