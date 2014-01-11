@@ -120,3 +120,36 @@ load_level(Level *level, char *xpm[], Rect_Vect *overlords, RGB_Color color, siz
 		}
 	}
 }
+
+Speeches *
+load_speech(char *speech, long *line, Speeches *last) {
+	Speeches *next;
+
+	if (last != NULL) {
+		strcpy(speech, last->text);
+		*line = last->line;
+
+		next = last->next;
+		free(last);
+		return next;
+
+	} else {
+		*line = -1;
+		return NULL;
+	}
+}
+
+//return new_nlast;
+Speeches *
+add_speech(long line, char *speech, Speeches *last) {
+	Speeches *new;
+	new = emalloc(sizeof(Speeches));
+	new->text = speech;
+	new->line = line;
+	new->next = NULL;
+	if (last != NULL) {
+		last->next = new;
+	} 
+
+	return new;
+}

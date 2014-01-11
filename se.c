@@ -14,6 +14,7 @@
 #include "se.h"
 
 #include "levels/l1.xpm"
+#include "levels/l2.xpm"
 
 SDL_Surface *
 load_media(const char *src, SDL_Surface *screen) {
@@ -224,10 +225,10 @@ move_plane(Plane *plane, Level *level) {
 		plane->x = level->sur->w - plane->sur->w;
 	}
 
+	plane->level_y -= plane->speed;
 	if (plane->level_y < plane->true_y) {
 		plane->true_y = plane->level_y;
 	}
-	plane->level_y -= plane->speed;
 
 	change_plane_boxes(plane);
 }
@@ -272,7 +273,7 @@ land_collision(Plane *plane, Level *level, size_t *last_pos) {
 	strip.size = 0;
 	strip.max  = 0;
 
-	for (size_t pos = *last_pos; pos >= 0 && level->boxes.tab[pos].y >= plane->boxes.tab[0].y; pos--) {
+	for (size_t pos = *last_pos; pos >= 0 && pos < level->boxes.size && level->boxes.tab[pos].y >= plane->boxes.tab[0].y; pos--) {
 		vect_add(level->boxes.tab[pos], &strip);
 	}
 
@@ -329,7 +330,6 @@ void
 init_anim(Animation *anim) {
 	anim->dir = 1;
 
-	srand(time(NULL));
 	anim->frame = rand() % 4;
 
 	printf("start_frame: %d\n", anim->frame);
@@ -370,6 +370,16 @@ show_anim(int x, int y, SDL_Surface *source, SDL_Surface *dest, Animation *anim)
 }
 
 
+void
+init_speeches(Speeches *speeches[]) {
+	Speeches *sp = NULL;
+
+	sp = add_speech(0, "No to do boju! Początek powinien być łatwy. Wystarczy, że nie będę zwracał na siebie uwagi i jescze dzisiaj spokojnie wylonduje w Karagandzie.", sp);
+	speeches[1] = sp;
+	sp = add_speech(0, "to drugie zdanie", sp);
+	sp = add_speech(320, "MONGO", sp);
+
+}
 
 //should return SDL_Surface in order to proper cleanning
 void 
@@ -546,11 +556,15 @@ main() {
 
 	int start_ticks;
 
+	int level_nr = 1;
+
+	//loading level
 	Level level;
 	level.sur = levels[LEVEL_1];
 
 	Rect_Vect overlords;
 	load_level(&level, l1_xpm, &overlords, LEVEL_RIVER_MASK, SCREEN_WIDTH);
+	//end loading level
 
 	Plane plane;
 
@@ -580,6 +594,10 @@ main() {
 		init_anim(&ov_anims[i]);
 	}
 
+	//+1 becouse we don't have lv 0;
+	Speeches *speeches[LEVEL_TOTAL + 1];
+	init_speeches(speeches);
+
 	//reloading farmes
 	int reload = (1000/(THEORETICAL_RATE/60)) / FRAMES_PER_SECOND;
 	int frames_to_shoot = 0;
@@ -589,8 +607,15 @@ main() {
 	long distance = 0;
 	//how many pixel to come
 	long fuel = 8000;
-	int level_begin = 1;
+
 	int act_sur;
+
+	long next_speech;
+	char speech[300];
+	speeches[level_nr] = load_speech(speech, &next_speech, speeches[level_nr]);
+
+	//MAIN LOOP
+	Mix_PlayChannel(-1, sounds[SOUND_ENGINE], -1);
 	while (quit == 0) {
 		//Start teh frame timer
 		start_ticks = SDL_GetTicks();
@@ -651,10 +676,15 @@ main() {
 
 		show_plane(&plane, screen);
 
+		//show bullets
 		for (size_t i = 0; i < bullets.size; i++) {
 			int true_y;
-			true_y = bullets.tab[i].y - (plane.level_y + plane.sur->h) + SCREEN_HEIGHT; 
-			//re
+			if (plane.level_y != plane.true_y) {
+				true_y = bullets.tab[i].y - (plane.level_y + plane.sur->h) + SCREEN_HEIGHT; 
+			} else {
+				true_y = bullets.tab[i].y;
+			}
+
 			if (true_y < 0) {
 				vect_del(i, &bullets);
 			} else {
@@ -684,6 +714,7 @@ main() {
 				dir_sur = surfaces[SUR_OVERLORD_R];
 			}
 			show_anim(overlords.tab[i].x, true_y, dir_sur, screen, &ov_anims[i]);
+
 		}
 
 		//update com
@@ -751,15 +782,14 @@ main() {
 
 
 
-		if (level_begin == 1) {
-			level_begin = 0;
-			pilot_say("No to do boju! Początek powinien być łatwy. Wystarczy, że nie będę zwracał na siebie uwagi i jescze dzisiaj spokojnie wylonduje w Karagandzie.", fonts, surfaces, screen);
+		//printf("%d == %ld\n", plane.level_y + plane.sur->h, (level.sur->h - next_speech));
+		while (plane.level_y <= (level.sur->h - next_speech) && next_speech != -1) {
+			pilot_say(speech, fonts, surfaces, screen);
+			speeches[level_nr] = load_speech(speech, &next_speech, speeches[level_nr]);
 			SDL_UpdateWindowSurface(window);
 			wait_for_space();
-			Mix_PlayChannel(-1, sounds[SOUND_ENGINE], -1);
-		} else {
-			SDL_UpdateWindowSurface(window);
 		}
+		SDL_UpdateWindowSurface(window);
 
 		if (fuel <= 0) {
 			goto gameover;
@@ -790,6 +820,12 @@ main() {
 		}
 		if (frames_to_shoot > 0)
 			frames_to_shoot--;
+
+		//check if level over
+		if (plane.level_y + plane.sur->h <= 0) {
+			printf("!! LEVEL OVER !!");
+			break;
+		}
 	}
 
 gameover:

@@ -48,10 +48,18 @@ enum Surfaces {
 };
 const char *Images[] = {"start.bmp", "kws1.bmp", "overlord.bmp", "overlord_r.bmp", "pilot.png", "kws1_l.bmp", "kws1_r.bmp"};
 
+const size_t LEVEL_MAX_HEIGHT = 36000;
 enum Levels {
 	LEVEL_1,
+	LEVEL_2,
 	LEVEL_TOTAL,
 };
+
+/*const char *Level_Speech[LEVEL_TOTAL][LEVEL_MAX_HEIGHT];
+
+//second parameter says after witch pixes com is showed;
+Level_Speech[1][0] = "No to do boju! Początek powinien być łatwy. Wystarczy, że nie będę zwracał na siebie uwagi i jescze dzisiaj spokojnie wylonduję w Karagandzie.";
+Level_Speech[1][100] = "Jesteście głupsi od samych siebie!";*/
 
 enum Font {
 	FONT_INFO,
