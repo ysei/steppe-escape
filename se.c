@@ -590,6 +590,10 @@ menu:
 	//levels begin from 1
 	//level loop
 	while (level_nr < LEVEL_TOTAL+1) {
+		long start_ammo = ammo;
+		long start_distance = distance;
+		long start_fuel = fuel;
+
 		//loading level
 		Level level;
 		Rect_Vect overlords;
@@ -720,7 +724,7 @@ menu:
 				fuel += FUEL_LOADING_SPEED;
 				Mix_PlayChannel(-1, sounds[SOUND_BLUP], 0);
 				if (fuel >= MAX_FUEL) {
-					fuel += MAX_FUEL;
+					fuel = MAX_FUEL;
 				}
 			}
 
@@ -880,6 +884,9 @@ menu:
 					game_over(points);
 					goto menu;
 				} else {
+					ammo = start_ammo;
+					distance = start_distance;
+					fuel = start_fuel;
 					wait_for_space();
 					break;
 				}
