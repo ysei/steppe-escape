@@ -914,8 +914,6 @@ menu:
 			if (plane.level_y + plane.sur->h <= 0) {
 				printf("!! LEVEL OVER !!");
 				level_nr++;
-				//cleaning
-				SDL_FreeSurface(level.sur);
 				break;
 			}
 		}//end game loop
